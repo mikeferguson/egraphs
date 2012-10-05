@@ -970,6 +970,11 @@ void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, int cost, vecto
           v = v->neighbors[i];
           egraph_->discToCont(v->coord,coord);
           ids.push_back(egraph_env_->getStateID(coord));
+
+          egraph_path_costs_.push_back(v->costs[i]);
+          if(v!=v2)
+            egraph_path_.push_back(coord);
+
           break;
         }
       }
@@ -990,6 +995,9 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
   CMDPSTATE* goalstate = NULL;
   CMDPSTATE* startstate=NULL;
 
+  egraph_path_.clear();
+  egraph_path_costs_.clear();
+
   if(bforwardsearch)
   {	
     startstate = pSearchStateSpace->searchstartstate;
@@ -1009,6 +1017,10 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
 
   wholePathIds.push_back(state->StateID);
   solcost = 0;
+
+  vector<double> coord;
+  egraph_env_->getCoord(state->StateID,coord);
+  egraph_path_.push_back(coord);
 
   FILE* fOut = stdout;
   if(fOut == NULL){
@@ -1076,6 +1088,12 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
     state = searchstateinfo->bestnextstate;
 
     wholePathIds.push_back(state->StateID);
+
+    //if we used a shortcut...in this case we already added
+    if(egraph_path_costs_.size() < egraph_path_.size())
+      egraph_path_costs_.push_back(actioncost);
+    egraph_env_->getCoord(state->StateID,coord);
+    egraph_path_.push_back(coord);
   }
 
 
@@ -1233,6 +1251,8 @@ bool AnytimeEGraphPlanner::Search(AEGSearchStateSpace_t* pSearchStateSpace, vect
     SBPL_PRINTF("solution is found\n");      
     pathIds = GetSearchPath(pSearchStateSpace, solcost);
     ret = true;
+
+    //TODO:Mike pick up here!!! wake up the maintain egraph thread!
   }
 
   SBPL_PRINTF("total expands this call = %d, planning time = %.3f secs, solution cost=%d\n", 

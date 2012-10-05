@@ -265,6 +265,9 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     EGraph* egraph_;
     EGraphable* egraph_env_;
     EGraphHeuristic* egraph_heur_;
+
+    vector<vector<double> > egraph_path_;
+    vector<int> egraph_path_costs_;
     MDPConfig* MDPCfg_;
 
     bool bforwardsearch; //if true, then search proceeds forward, otherwise backward
