@@ -1,0 +1,127 @@
+Max
+-save a transform from the map frame to the frame of interest (like in door opening)
+-save which state variables are affected by it
+-so we can transform the e-graph on start up to accomodate a new map with a different map frame
+
+
+This is the list of stuff that goes into the E-Graph re-write
+
+EGraph
+data structures
+-a coordinate to id mapping
+-an id to coordinate mapping
+-an adjacency list representing the graph (using the egraph ids)
+-an id to component mapping
+-a component to id mapping
+functions
+-constructor takes 4 vectors (min,max,res,names) which tells me the number of dimensions, how many values they can have, and the dimension names
+-another constructor takes an egraph file to load
+-add path takes a vector of names, and a vector of vectors of doubles (the waypoints on the path), a vector of costs
+--this add the edges to the e-graph and recomputes components. no longer computes all-pairs! this simplifies the e-graph data structure and drops computation between queries to almost nothing. finally this will call setEGraph on the EGraphable's EGraphHeuristic to prepare it for the next query
+-save egraph
+-load egraph
+-collision check
+
+
+EGraphable
+-requires save and load environment functions???? (we need this if we want to optimize the e-graph offline)
+-requires a snap motion function between 2 coordinates. returns the cost of the transistion (inf if not valid). this is used for snap motions as well as reading in demonstrations
+-requires a getCoord function which takes a state id (the ids the environment uses) and returns a vector with the coordinate so we can look for shortcuts in the e-graph 
+--we will never call getCoord on the goal (because it is possible we don't know what the goal state looks like)
+-requires a getHeuristicGoalState function which returns the down-projected goal state which the e-grpah heuristic uses
+-we have a setHeuristic function which takes an EGraphHeuristic object
+-in the future we could ask them to implement features for their environment....we could have some built in ones like 2D patch and 3D patch
+
+
+EGraphHeuristic
+-has setGoal, setEGraph, getHeuristic function
+-you can write your own! or use one of the standards I create
+-a general N-dimensional dijkstra
+--the constructor
+---requires a vector of n dimension sizes (so we can allocate a grid), a vector of successors (each of length n), a vector of costs (of the successors)
+---a function which returns a pointer to the collision grid (just a 1D array) or null if the grid hasn't changed
+---a function which given a coordinate (an egraph vertex) returns a vector of length n (the down-projection)
+--setGoal will get a new collision grid, wipe g-values from the last search, and insert the goal into the queue
+--getHeuristic is an on-demand dijkstra which uses the given successors and the e-graph edges provided by the setEGraph function until queried cell is filled in
+--setEGraph gets a list of edges in the e-graph. it turns these into n-dimensional edges by calling the down-project function on the endpoints of each edge
+-a 2D, 8-connected uniform cost dijkstra (an optimized version of the n-dimensional version)
+-a 3D, 26-connected uniform cost dijkstra (an optimized version of the n-dimensional version)
+-an N-dimensional euclidean distance
+
+
+AnytimeEGraphPlanner
+-ara* but it first modifies the delta parameter and then the epsilon
+-calls GetSuccs, GetShortcuts, GetSnaps
+-when finished, it post-processes the path (replace shortcuts with real transitions)
+-when it's done it wakes a thread which adds the new path to the e-graph (since it's the planner, we already know the edge costs)
+-has a new optimizeEGraph function
+--maybe this takes a time allowed for optimization? or a size we want the e-graph to be?
+--it calls the planner on various paths to improve quality
+--this may require stat collection during planning episodes (how often various edges are used, how many expansions it took to reach a certain goal)
+--we could also change the cost function during the offline planning to more complicated cost functions that take longer to plan with (like smoothness or staying away from obstacles)
+
+
+Using your own environment with E-Graphs
+1) You have an environment MyEnv which extends DiscreteSpaceInformation
+2) I have a class EGraphable which specifies additional functions the E-Graph planner needs
+3) You write a new class, MyEGraphEnv which inherits from MyEnv and EGraphable (it has to implement the functions required by EGraphable)
+4) After you instantiate the MyEGraphEnv you have to call setHeuristic and give it an EGraphHeuristic
+5) When you create a AnytimeEGraphPlanner you give it a pointer to an instance of MyEGraphEnv (I use a dynamic_cast to get an EGraphable object out of the required DiscreteSpaceInformation type that the planner takes)
+
+
+TODO:
+not a big fan of the 2 function pointers that have to be given to some of the heuristic types...
+
+
+Usage:
+
+class MyEGraphEnv : public MyEnv, public EGraphable{
+  void save(char* filename){
+    //code to save my environment data
+  }
+  void load(char* filename){
+    //code to load my environment data
+  }
+  int snap(vector<double> s1, vector<double> s2){
+    if(in collision)
+      return INFINITECOST;
+    else
+      return cost of motion;
+  }
+};
+
+int main(int argc, char** argv){
+  MyEGraphEnv* env = new MyEGraphEnv();
+  EGraphHeuristic* heur = new EGraph3DHeuristic(size_x,size_y,size_y,env->getGrid,env->downProjection);
+  env->setHeuristic(heur);
+  AnytimeEGraphPlanner* p = new AnytimeEGraphPlanner(env);
+
+  while(1){
+    p->setStart(env->setStart(some start numbers));
+    p->setGoal(env->setGoal(some goal numbers));
+    p->replan(replan parameters);
+
+    //when the environment changes we call our environment functions to update it and then...
+    p->collisionCheck();
+  }
+}
+
+
+
+
+
+
+Visualizations:
+-have an interactive marker for the goal i can drag around (x,y,z,yaw)
+-i can call plan from that directly
+-i can also just set the goal state in the planner
+-after setting the goal, i can move the marker around and request the heuristic value for any location
+-instead of requesting it, maybe just have the interactive maker change color (in jet fashion) as i move it around
+-all states on the egraph are interactive markers
+-an option for each egraph marker is to show the shortcuts
+-make an interactive marker version of the pr2 to move for demonstrations (drag in the plane or xyz for the arms, yaw for the arms, z for the torso, xy in the plane for the base, yaw for base)
+-start, stop, and cancel buttons for the demo
+-when planning, have a button to toggle between auto feedback, auto no feedback, or stop after each 
+
+
+
