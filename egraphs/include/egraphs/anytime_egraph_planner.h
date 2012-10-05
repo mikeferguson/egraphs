@@ -305,7 +305,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
 
     virtual void getShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
-    virtual void getShortcutPath(int fromID, int toID, vector<int>& ids);
+    virtual void getShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
 
     virtual int GetGVal(int StateID, AEGSearchStateSpace_t* pSearchStateSpace);
 

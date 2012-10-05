@@ -946,9 +946,37 @@ int AnytimeEGraphPlanner::getHeurValue(AEGSearchStateSpace_t* pSearchStateSpace,
 }
 
 
-void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, vector<int>& ids){
-  ROS_ERROR("Not implemented yet!!!!");
-  exit(0);
+//the id path (fromID,toID]
+void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, int cost, vector<int>& ids){
+  vector<double> coord;
+  vector<int> d_coord;
+  egraph_env_->getCoord(fromID,coord);
+  egraph_->contToDisc(coord,d_coord);
+  EGraph::EGraphVertex* v1 = egraph_->getVertex(d_coord);
+  egraph_env_->getCoord(toID,coord);
+  egraph_->contToDisc(coord,d_coord);
+  EGraph::EGraphVertex* v2 = egraph_->getVertex(d_coord);
+
+  EGraph::EGraphVertex* v = v1;
+
+  ids.clear();
+  while(v!=v2){
+    bool found = false;
+    for(unsigned int i=0; i<v->neighbors.size(); i++){
+      for(unsigned int j=0; j<v->neighbors[i]->shortcuts.size(); j++){
+        if(v->neighbors[i]->shortcuts[j]==v2 && v->neighbors[i]->shortcut_costs[j]+v->costs[i] == cost){
+          found = true;
+          cost -= v->costs[i];
+          v = v->neighbors[i];
+          egraph_->discToCont(v->coord,coord);
+          ids.push_back(egraph_env_->getStateID(coord));
+          break;
+        }
+      }
+      if(found)
+        break;
+    }
+  }
 }
 
 
@@ -1026,7 +1054,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
       if(actioncost < INFINITECOST){
         //we used a shortcut, fill in the sub-path
         vector<int> shortcut_path;
-        getShortcutPath(state->StateID,searchstateinfo->bestnextstate->StateID,shortcut_path);
+        getShortcutPath(state->StateID,searchstateinfo->bestnextstate->StateID,actioncost,shortcut_path);
         for(unsigned int j=0; j<shortcut_path.size()-1; j++)
           wholePathIds.push_back(shortcut_path[j]);
       }
