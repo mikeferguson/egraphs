@@ -91,6 +91,23 @@ AnytimeEGraphPlanner::~AnytimeEGraphPlanner()
     delete pSearchStateSpace_;
   }
   SBPL_FCLOSE(fDeb);
+
+
+  boost::unique_lock<boost::mutex> lock(egraph_mutex_);
+  planner_ok_ = false;
+  egraph_cond_.notify_one();
+  lock.unlock();
+
+  //egraph_thread_->interrupt();
+  egraph_thread_->join();
+}
+
+void AnytimeEGraphPlanner::initializeEGraph(EGraph* egraph, EGraphable* egraph_env, EGraphHeuristic* egraph_heur){
+  egraph_ = egraph;
+  egraph_env_ = egraph_env;
+  egraph_heur_ = egraph_heur;
+  planner_ok_ = true;
+  egraph_thread_ = new boost::thread(boost::bind(&AnytimeEGraphPlanner::updateEGraph, this));
 }
 
 
@@ -1253,6 +1270,9 @@ bool AnytimeEGraphPlanner::Search(AEGSearchStateSpace_t* pSearchStateSpace, vect
     ret = true;
 
     //TODO:Mike pick up here!!! wake up the maintain egraph thread!
+    boost::unique_lock<boost::mutex> lock(egraph_mutex_);
+    egraph_cond_.notify_one();
+    lock.unlock();
   }
 
   SBPL_PRINTF("total expands this call = %d, planning time = %.3f secs, solution cost=%d\n", 
@@ -1263,6 +1283,27 @@ bool AnytimeEGraphPlanner::Search(AEGSearchStateSpace_t* pSearchStateSpace, vect
 
   return ret;
 
+}
+
+void AnytimeEGraphPlanner::updateEGraph(){
+  boost::unique_lock<boost::mutex> lock(egraph_mutex_);
+
+  while(1){
+    //the mutex is locked
+    ROS_INFO("Maintain H thread suspending...\n");
+    egraph_cond_.wait(lock);
+
+    if(!planner_ok_)
+      break;
+
+    ROS_INFO("Maintain H thread awake!\n");
+    //lock.unlock();
+
+    //adds the new path to the e-graph and runs heuristic precomputations (like down projections of th e-graph)
+    egraph_->addPath(egraph_path_,egraph_path_costs_);
+    egraph_path_.clear();
+    egraph_path_costs_.clear();
+  }
 }
 
 

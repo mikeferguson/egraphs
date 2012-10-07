@@ -26,5 +26,5 @@ rosbuild_add_library(egraphs src/egraph.cpp src/egraph_2d_grid_heuristic.cpp src
 target_link_libraries(egraphs sbpl)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)
-#rosbuild_add_executable(example examples/example.cpp)
-#target_link_libraries(example ${PROJECT_NAME})
+rosbuild_add_executable(test_egraphs src/test_egraphs.cpp)
+target_link_libraries(test_egraphs egraphs)

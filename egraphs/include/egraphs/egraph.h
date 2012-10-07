@@ -36,7 +36,7 @@ class EGraph{
     //no longer computes all-pairs! this simplifies the e-graph data structure and drops computation between queries to almost nothing. 
     //no longer needs to compute components!
     //finally this will call setEGraph on the EGraphable's EGraphHeuristic to prepare it for the next query
-    bool addPath(vector<string>& names, vector<vector<double> >& coords, vector<int>& costs);
+    bool addPath(vector<vector<double> >& coords, vector<int>& costs);
 
     //save egraph
     bool save(string filename);

@@ -11,7 +11,7 @@ EGraph::EGraph(string filename){
   load(filename);
 }
 
-bool EGraph::addPath(vector<string>& names, vector<vector<double> >& coords, vector<int>& costs){
+bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   //error checking
   if(coords.size() < 2)
     ROS_WARN("[EGraph] Less than 2 points in the added path...doing nothing.");
@@ -20,17 +20,19 @@ bool EGraph::addPath(vector<string>& names, vector<vector<double> >& coords, vec
     ROS_ERROR("[EGraph] When giving a path to the E-Graph, it should have one less cost than it has coordinates");
     return false;
   }
+  /*
   for(unsigned int i=0; i<names_.size(); i++){
     if(names_[i].compare(names[i]) != 0){
       ROS_ERROR("[EGraph] The given path has a different coordinate format than how this E-Graph was initialized!");
       return false;
     }
   }
+  */
   
   //convert continuous coordinates to discrete ones
   vector<vector<int> > disc_coords;
   for(unsigned int i=0; i<coords.size(); i++){
-    if(names.size() != coords[i].size()){
+    if(res_.size() != coords[i].size()){
       ROS_ERROR("[EGraph] There is a coordinate in the path that doesn't have enough fields!");
       return false;
     }
@@ -145,13 +147,13 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   }
 }
 
-inline void EGraph::discToCont(vector<int> d, vector<double>& c){
+void EGraph::discToCont(vector<int> d, vector<double>& c){
   c.clear();
   for(unsigned int i=0; i<d.size(); i++)
     c.push_back(d[i]*res_[i]+min_[i]);
 }
 
-inline void EGraph::contToDisc(vector<double> c, vector<int>& d){
+void EGraph::contToDisc(vector<double> c, vector<int>& d){
   d.clear();
   for(unsigned int i=0; i<c.size(); i++)
     d.push_back(int((c[i]-min_[i])/(res_[i])));

@@ -36,6 +36,8 @@
 #include<egraphs/egraphable.h>
 #include<egraphs/egraph_heuristic.h>
 
+#include<boost/thread.hpp>
+
 //---configuration----
 
 //control of EPS
@@ -149,11 +151,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
 
   public:
 
-    void initializeEGraph(EGraph* egraph, EGraphable* egraph_env, EGraphHeuristic* egraph_heur){
-      egraph_ = egraph;
-      egraph_env_ = egraph_env;
-      egraph_heur_ = egraph_heur;
-    };
+    void initializeEGraph(EGraph* egraph, EGraphable* egraph_env, EGraphHeuristic* egraph_heur);
 
     /** \brief replan a path within the allocated time, return the solution in the vector
     */
@@ -266,6 +264,11 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     EGraphable* egraph_env_;
     EGraphHeuristic* egraph_heur_;
 
+    bool planner_ok_;
+    boost::thread* egraph_thread_;
+    boost::mutex egraph_mutex_;
+    boost::condition_variable egraph_cond_;
+
     vector<vector<double> > egraph_path_;
     vector<int> egraph_path_costs_;
     MDPConfig* MDPCfg_;
@@ -309,6 +312,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     virtual void getShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
+    virtual void updateEGraph();
 
     virtual int GetGVal(int StateID, AEGSearchStateSpace_t* pSearchStateSpace);
 
