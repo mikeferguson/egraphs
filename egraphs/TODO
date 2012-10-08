@@ -1,4 +1,7 @@
 Max
+-disable thread flag
+-disable snap flag
+-get rid of the downProject function requirement in EGraphable (and other similar functions)
 -save a transform from the map frame to the frame of interest (like in door opening)
 -save which state variables are affected by it
 -so we can transform the e-graph on start up to accomodate a new map with a different map frame

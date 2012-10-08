@@ -2,7 +2,8 @@
 
 #define HEUR_XY2ID(x,y) ((y + 1) * width_ + (x + 1))
 
-EGraph2dGridHeuristic::EGraph2dGridHeuristic(int size_x, int size_y, int move_cost){
+EGraph2dGridHeuristic::EGraph2dGridHeuristic(EGraphDownProject* downProject, int size_x, int size_y, int move_cost){
+  downProject_ = downProject;
   sizex_ = size_x;
   sizey_ = size_y;
   cost_1_move_ = move_cost;
@@ -42,9 +43,25 @@ void EGraph2dGridHeuristic::setGrid(vector<vector<bool> >& grid){
   }
 }
 
-void EGraph2dGridHeuristic::cellToStates(vector<int> dp, vector<EGraph::EGraphVertex*>& states){
-  states.clear();
-  states = heur[HEUR_XY2ID(dp[0],dp[1])].egraph_vertices;
+void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices){
+  vector<int> dp;
+  downProject_->downProject(coord,dp);
+  vertices.clear();
+  vertices = heur[HEUR_XY2ID(dp[0],dp[1])].egraph_vertices;
+}
+
+void EGraph2dGridHeuristic::runPrecomputations(){
+  //refill the cell to egraph vertex mapping
+  for(int i=0; i<planeSize_; i++)
+    heur[i].egraph_vertices.clear();
+
+  vector<int> dp;
+  vector<double> c_coord;
+  for(unsigned int i=0; eg_->id2vertex.size(); i++){
+    eg_->discToCont(eg_->id2vertex[i]->coord,c_coord);
+    downProject_->downProject(c_coord,dp);
+    heur[HEUR_XY2ID(dp[0],dp[1])].egraph_vertices.push_back(eg_->id2vertex[i]);
+  }
 }
 
 void EGraph2dGridHeuristic::setGoal(vector<double> goal){
@@ -53,24 +70,15 @@ void EGraph2dGridHeuristic::setGoal(vector<double> goal){
     heur[i].id = i;
     heur[i].heapindex = 0;
     heur[i].closed = false;
-    heur[i].egraph_vertices.clear();
   }
   
-  //refill the cell to egraph vertex mapping
   vector<int> dp;
-  vector<double> c_coord;
-  for(unsigned int i=0; eg_->id2vertex.size(); i++){
-    eg_->discToCont(eg_->id2vertex[i]->coord,c_coord);
-    egraphable_->downProject(c_coord,dp);
-    heur[HEUR_XY2ID(dp[0],dp[1])].egraph_vertices.push_back(eg_->id2vertex[i]);
-  }
-
   if(goal.empty()){
     dp = goal_dp_;
   }
   else{
     //down project the goal state and add it to the queue
-    egraphable_->downProject(goal,dp);
+    downProject_->downProject(goal,dp);
     goal_dp_ = dp;
   }
   CKey key;
@@ -94,7 +102,7 @@ void EGraph2dGridHeuristic::setGoal(vector<double> goal){
 
 int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
   vector<int> dp;
-  egraphable_->downProject(coord,dp);
+  downProject_->downProject(coord,dp);
   EGraph2dGridHeuristicCell* cell = &heur[HEUR_XY2ID(dp[0],dp[1])];
   
   CKey key;
@@ -120,7 +128,7 @@ int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
     for(unsigned int i=0; i<state->egraph_vertices.size(); i++){
       for(unsigned int j=0; j<state->egraph_vertices[i]->neighbors.size(); j++){
         eg_->discToCont(state->egraph_vertices[i]->neighbors[j]->coord,c_coord);
-        egraphable_->downProject(c_coord,dp);
+        downProject_->downProject(c_coord,dp);
         EGraph2dGridHeuristicCell* cell = &heur[HEUR_XY2ID(dp[0],dp[1])];
         int newCost = oldCost + state->egraph_vertices[i]->costs[j];
         if(cell->cost > newCost){ //if we found a cheaper path to it

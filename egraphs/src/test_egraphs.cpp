@@ -1,4 +1,5 @@
 #include<egraphs/egraph.h>
+#include<egraphs/egraph_down_project.h>
 #include<egraphs/egraphable.h>
 #include<egraphs/egraph_2d_grid_heuristic.h>
 #include<egraphs/anytime_egraph_planner.h>
@@ -20,27 +21,24 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
     virtual int getStateID(vector<double>& coord){
       return 0;
     };
+};
 
-    //requires a getHeuristicGoalState function which returns the down-projected goal state which the e-graph heuristic uses
-    virtual void getHeuristicGoalState(vector<double>& goal){
-      
-    };
+class myDownProject : public EGraphDownProject{
+  void downProject(vector<double> coord, vector<int>& dp){
 
-    //requires a downProject function which takes a coordinate in the state space and projects it down into the simpler heuristic space
-    virtual void downProject(vector<double> coord, vector<int>& dp){
-
-    };
+  };
 };
 
 int main(int argc, char** argv){
   myEnv env;
+  myDownProject dp;
 
   vector<string> names;
   vector<double> min;
   vector<double> max;
   vector<double> res;
   EGraph eg(min,max,res,names);
-  EGraph2dGridHeuristic heur(100,100,1);
+  EGraph2dGridHeuristic heur(&dp,100,100,1);
 
   AnytimeEGraphPlanner aegplanner(&env,true);
   aegplanner.initializeEGraph(&eg,&env,&heur);

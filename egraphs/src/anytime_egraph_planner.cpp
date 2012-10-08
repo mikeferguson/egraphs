@@ -106,6 +106,7 @@ void AnytimeEGraphPlanner::initializeEGraph(EGraph* egraph, EGraphable* egraph_e
   egraph_ = egraph;
   egraph_env_ = egraph_env;
   egraph_heur_ = egraph_heur;
+  egraph_heur_->initialize(egraph_);
   planner_ok_ = true;
   egraph_thread_ = new boost::thread(boost::bind(&AnytimeEGraphPlanner::updateEGraph, this));
 }
@@ -350,10 +351,9 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
 void AnytimeEGraphPlanner::getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV){
   vector<double> coord;
   egraph_env_->getCoord(stateID,coord);
-  vector<int> dp;
-  egraph_env_->downProject(coord,dp);
   vector<EGraph::EGraphVertex*> vertices;
-  egraph_heur_->cellToStates(dp,vertices);
+  egraph_heur_->getEGraphVerticesWithSameHeuristic(coord,vertices);
+
   vector<double> new_coord;
   int new_id;
   int new_cost;
@@ -1301,6 +1301,7 @@ void AnytimeEGraphPlanner::updateEGraph(){
 
     //adds the new path to the e-graph and runs heuristic precomputations (like down projections of th e-graph)
     egraph_->addPath(egraph_path_,egraph_path_costs_);
+    egraph_heur_->runPrecomputations();
     egraph_path_.clear();
     egraph_path_costs_.clear();
   }

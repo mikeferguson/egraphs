@@ -3,6 +3,7 @@
 
 #include<egraphs/egraph_heuristic.h>
 #include<egraphs/egraph.h>
+#include<egraphs/egraph_down_project.h>
 #include<sbpl/headers.h>
 
 /*
@@ -17,11 +18,12 @@
 
 class EGraph2dGridHeuristic : public EGraphHeuristic{
   public:
-    EGraph2dGridHeuristic(int size_x, int size_y, int move_cost);
+    EGraph2dGridHeuristic(EGraphDownProject* downProject, int size_x, int size_y, int move_cost);
     void setGrid(vector<vector<bool> >& grid);
     void setGoal(vector<double> goal);
     int getHeuristic(vector<double> coord);
-    void cellToStates(vector<int> dp, vector<EGraph::EGraphVertex*>& states);
+    void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices);
+    void runPrecomputations();
 
   protected:
     class EGraph2dGridHeuristicCell: public AbstractSearchState{
@@ -46,6 +48,7 @@ class EGraph2dGridHeuristic : public EGraphHeuristic{
     vector<int> goal_dp_;
 
     vector<EGraph2dGridHeuristicCell> heur;
+    EGraphDownProject* downProject_;
 };
 
 #endif
