@@ -297,6 +297,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
   if(!v)
     return;
 
+  //ROS_INFO("get shortcut...");
   if(v->shortcutIteration < pSearchStateSpace_->searchiteration){
     vector<EGraph::EGraphVertex*> path;
     vector<int> costs;
@@ -305,6 +306,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       EGraph::EGraphVertex* s = path.back();
       egraph_->discToCont(s->coord,coord);
       int s_cost = egraph_heur_->getHeuristic(coord);
+      //ROS_INFO("%d %d %d",s->coord[0],s->coord[1],s_cost);
       EGraph::EGraphVertex* best_neighbor = NULL;
       int best_cost = s_cost;
       int trans_cost = 0;
@@ -312,6 +314,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
         EGraph::EGraphVertex* temp = s->neighbors[i];
         egraph_->discToCont(temp->coord,coord);
         int temp_cost = egraph_heur_->getHeuristic(coord);
+        //ROS_INFO("%d %d %d",temp->coord[0],temp->coord[1],temp_cost);
         if(temp_cost < best_cost){
           best_cost = temp_cost;
           best_neighbor = temp;
@@ -321,6 +324,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       //if we've reached a local minima then this state is its own shortcut
       //it's already in the path list from last iteration so it doesn't need to be added again
       if(best_cost == s_cost){
+        //ROS_INFO("local minima found");
         s->shortcuts.push_back(s);
         s->shortcutIteration = pSearchStateSpace_->searchiteration;
         s->shortcut_costs.push_back(0);
@@ -330,33 +334,52 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       costs.push_back(trans_cost);
       //if we've reach a state that already has its shortcut filled in for this iteration
       //then we can exit early
-      if(best_neighbor->shortcutIteration == pSearchStateSpace_->searchiteration)
+      if(best_neighbor->shortcutIteration == pSearchStateSpace_->searchiteration){
+        //ROS_INFO("cached shortcut");
         break;
+      }
     }
     EGraph::EGraphVertex* theShortcut = path.back();
-    for(int i=path.size()-1; i>=0; i--){
+    //ROS_INFO("fill in path with %d %d",theShortcut->coord[0],theShortcut->coord[1]);
+    for(int i=path.size()-2; i>=0; i--){
+      //ROS_INFO("huh %d %d",path[i],path[i+1]);
       path[i]->shortcuts.push_back(theShortcut);
       path[i]->shortcutIteration = pSearchStateSpace_->searchiteration;
+      //ROS_INFO("hmm");
+      //ROS_INFO("prev cost vec size %d",path[i+1]->shortcut_costs.size());
+      //ROS_INFO("prev cost %d",path[i+1]->shortcut_costs.back());
+      //ROS_INFO("inc cost %d",costs[i]);
       path[i]->shortcut_costs.push_back(path[i+1]->shortcut_costs.back()+costs[i]);
     }
   }
+  //ROS_INFO("done computing shortcut");
 
   for(unsigned int i=0; i<v->shortcuts.size(); i++){
     egraph_->discToCont(v->shortcuts[i]->coord,coord);
     SuccIDV.push_back(egraph_env_->getStateID(coord));
     CostV.push_back(v->shortcut_costs[i]);
+    //ROS_INFO("%d %d",egraph_env_->getStateID(coord),v->shortcut_costs[i]);
   }
+
+  //ROS_INFO("ahhhh");
+  //for(unsigned int i=0; i<SuccIDV.size(); i++){
+    //ROS_INFO("%d %d",SuccIDV[i],CostV[i]);
+  //}
+
+  //ROS_INFO("done get shortcut");
 }
 
 void AnytimeEGraphPlanner::getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV){
   vector<double> coord;
   egraph_env_->getCoord(stateID,coord);
   vector<EGraph::EGraphVertex*> vertices;
+  //ROS_INFO("get verts with same heur...");
   egraph_heur_->getEGraphVerticesWithSameHeuristic(coord,vertices);
 
   vector<double> new_coord;
   int new_id;
   int new_cost;
+  //ROS_INFO("%d possible snaps",vertices.size());
   for(unsigned int i=0; i<vertices.size(); i++){
     egraph_->discToCont(vertices[i]->coord,new_coord);
     if(egraph_env_->snap(coord,new_coord,new_id,new_cost)){
@@ -364,6 +387,7 @@ void AnytimeEGraphPlanner::getSnapSuccessors(int stateID, vector<int>& SuccIDV, 
       SuccIDV.push_back(new_cost);
     }
   }
+  //ROS_INFO("done gettting snaps");
 }
 
 //used for forward search
@@ -374,11 +398,15 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
   CKey key;
   AEGState *succstate;
 
+  //ROS_ERROR("expanding g:%d h:%d f:%d",state->v,state->h,int(state->v+state->h*pSearchStateSpace->eps));
+
   //Get the normal successors from the environment
   environment_->GetSuccs(state->MDPstate->StateID, &SuccIDV, &CostV);
 
   //if we are on the egraph, get get shortcut successors
+  //ROS_INFO("whoa1!");
   getShortcutSuccessors(state->MDPstate->StateID,SuccIDV,CostV);
+  //ROS_INFO("whoa2!");
 
   //if the downprojected state is on the egraph, get snap successors
   getSnapSuccessors(state->MDPstate->StateID,SuccIDV,CostV);
@@ -771,6 +799,7 @@ int AnytimeEGraphPlanner::SetSearchGoalState(int SearchGoalStateID, AEGSearchSta
 
     //recompute heuristic for the heap if heuristics is used
 #if USE_HEUR
+/*
     for(int i = 0; i < (int)pSearchStateSpace->searchMDP.StateArray.size(); i++)
     {
       CMDPSTATE* MDPstate = pSearchStateSpace->searchMDP.StateArray[i];
@@ -779,6 +808,7 @@ int AnytimeEGraphPlanner::SetSearchGoalState(int SearchGoalStateID, AEGSearchSta
     }
 
     pSearchStateSpace->bReevaluatefvals = true;
+    */
 #endif
   }
 
@@ -1004,6 +1034,7 @@ void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, int cost, vecto
 
 vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchStateSpace, int& solcost)
 {
+  int shortcutCount = 0;
   vector<int> SuccIDV;
   vector<int> CostV;
   vector<int> wholePathIds;
@@ -1086,6 +1117,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
         getShortcutPath(state->StateID,searchstateinfo->bestnextstate->StateID,actioncost,shortcut_path);
         for(unsigned int j=0; j<shortcut_path.size()-1; j++)
           wholePathIds.push_back(shortcut_path[j]);
+        shortcutCount += shortcut_path.size();
       }
       else{
         SuccIDV.clear();
@@ -1113,7 +1145,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
     egraph_path_.push_back(coord);
   }
 
-
+  ROS_INFO("[AEGPlanner] %f percent of the path came from shortcuts (%d)\n",((double)shortcutCount)/(wholePathIds.size()-1),shortcutCount);
   return wholePathIds;
 }
 
@@ -1290,13 +1322,13 @@ void AnytimeEGraphPlanner::updateEGraph(){
 
   while(1){
     //the mutex is locked
-    ROS_INFO("Maintain H thread suspending...\n");
+    ROS_INFO("[AEGPlanner] Maintain H thread suspending...\n");
     egraph_cond_.wait(lock);
 
     if(!planner_ok_)
       break;
 
-    ROS_INFO("Maintain H thread awake!\n");
+    ROS_INFO("[AEGPlanner] Maintain H thread awake!\n");
     //lock.unlock();
 
     //adds the new path to the e-graph and runs heuristic precomputations (like down projections of th e-graph)
@@ -1371,6 +1403,9 @@ int AnytimeEGraphPlanner::set_goal(int goal_stateID)
 
   SBPL_PRINTF("planner: setting goal to %d\n", goal_stateID);
   environment_->PrintState(goal_stateID, true, stdout);
+  vector<double> coord;
+  egraph_env_->getCoord(goal_stateID,coord);
+  egraph_heur_->setGoal(coord);
 
   if(bforwardsearch)
   {	
@@ -1389,6 +1424,7 @@ int AnytimeEGraphPlanner::set_goal(int goal_stateID)
     }
   }
 
+  //ROS_ERROR("done setting goal");
   return 1;
 }
 

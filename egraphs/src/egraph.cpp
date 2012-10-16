@@ -5,6 +5,9 @@ EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolut
   max_ = max;
   res_ = resolution;
   names_ = names;
+
+  //TODO: This is an arbitrary size...
+  hashtable.resize(32*1024);
 }
 
 EGraph::EGraph(string filename){
@@ -13,9 +16,10 @@ EGraph::EGraph(string filename){
 
 bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   //error checking
-  if(coords.size() < 2)
+  if(coords.size() < 2){
     ROS_WARN("[EGraph] Less than 2 points in the added path...doing nothing.");
     return true;
+  }
   if(costs.size() != coords.size()-1){
     ROS_ERROR("[EGraph] When giving a path to the E-Graph, it should have one less cost than it has coordinates");
     return false;
@@ -53,6 +57,9 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   //add each edge
   for(unsigned int i=1; i<path_vertices.size(); i++)
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
+
+  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",id2vertex.size());
+  return true;
 }
 
 bool EGraph::save(string filename){

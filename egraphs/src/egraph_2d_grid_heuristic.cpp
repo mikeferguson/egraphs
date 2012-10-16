@@ -18,6 +18,8 @@ EGraph2dGridHeuristic::EGraph2dGridHeuristic(EGraphDownProject* downProject, int
     int x = i % width_, y = i / width_;
     if (x == 0 || x == width_ - 1 || y == 0 || y == height_ - 1)
       heur[i].cost = -1;
+    else
+      heur[i].cost = INFINITECOST;
   }
 
 }
@@ -41,6 +43,17 @@ void EGraph2dGridHeuristic::setGrid(vector<vector<bool> >& grid){
         heur[id].cost = INFINITECOST;
     }
   }
+
+/*
+  FILE* fout = fopen("heur2d_grid.csv","w");
+  for(unsigned int x=0; x<grid.size(); x++){
+    for(unsigned int y=0; y<grid[x].size(); y++){
+      fprintf(fout,"%d ",int(grid[x][y]));
+    }
+    fprintf(fout,"\n");
+  }
+  fclose(fout);
+*/
 }
 
 void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices){
@@ -51,25 +64,34 @@ void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> co
 }
 
 void EGraph2dGridHeuristic::runPrecomputations(){
+  //ROS_INFO("begin precomputations");
   //refill the cell to egraph vertex mapping
   for(int i=0; i<planeSize_; i++)
     heur[i].egraph_vertices.clear();
 
   vector<int> dp;
   vector<double> c_coord;
-  for(unsigned int i=0; eg_->id2vertex.size(); i++){
+  //ROS_INFO("down project edges...");
+  for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     eg_->discToCont(eg_->id2vertex[i]->coord,c_coord);
+    //ROS_INFO("size of coord %d",c_coord.size());
     downProject_->downProject(c_coord,dp);
+    //ROS_INFO("size of coord %d",dp.size());
+    //ROS_INFO("coord %d %d",dp[0],dp[1]);
     heur[HEUR_XY2ID(dp[0],dp[1])].egraph_vertices.push_back(eg_->id2vertex[i]);
   }
+  //ROS_INFO("done precomputations");
 }
 
 void EGraph2dGridHeuristic::setGoal(vector<double> goal){
+  //ROS_ERROR("begin setGoal");
   //clear the heur data structure
   for(int i=0; i<planeSize_; i++){
     heur[i].id = i;
     heur[i].heapindex = 0;
     heur[i].closed = false;
+    if(heur[i].cost!=-1)
+      heur[i].cost = INFINITECOST;
   }
   
   vector<int> dp;
@@ -88,6 +110,20 @@ void EGraph2dGridHeuristic::setGoal(vector<double> goal){
   heap.insertheap(&heur[id],key);
   heur[id].cost = 0;
   inflated_cost_1_move_ = cost_1_move_ * epsE_;
+
+/*
+  ROS_ERROR("end setGoal");
+  FILE* fout = fopen("heur2d_first.csv","w");
+  for(unsigned int x=0; x<sizex_; x++){
+    for(unsigned int y=0; y<sizey_; y++){
+      int id = HEUR_XY2ID(x,y);
+      fprintf(fout,"%d ",heur[id].cost);
+    }
+    fprintf(fout,"\n");
+  }
+  fclose(fout);
+  ROS_ERROR("end setGoal i/o");
+*/
 }
 
 #define HEUR_SUCCESSOR(offset){                                                   \
@@ -141,6 +177,20 @@ int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
         }
       }
     }
+    /*
+    if(cell->closed){
+      ROS_ERROR("hey");
+      FILE* fout = fopen("heur2d.csv","w");
+      for(unsigned int x=0; x<sizex_; x++){
+        for(unsigned int y=0; y<sizey_; y++){
+          int id = HEUR_XY2ID(x,y);
+          fprintf(fout,"%d ",heur[id].cost);
+        }
+        fprintf(fout,"\n");
+      }
+      fclose(fout);
+    }
+    */
   }
   return cell->cost;
 }
