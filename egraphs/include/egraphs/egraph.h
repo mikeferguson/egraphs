@@ -12,6 +12,11 @@ class EGraph{
 
     class EGraphVertex{
       public:
+        EGraphVertex(){
+          id = -1;
+          shortcutIteration = 0;
+        };
+
         int id;
         vector<int> coord;
         //an adjacency list representing the graph (using the egraph ids)

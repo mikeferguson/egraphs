@@ -55,10 +55,24 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   }
 
   //add each edge
-  for(unsigned int i=1; i<path_vertices.size(); i++)
+  for(unsigned int i=1; i<path_vertices.size(); i++){
+    ROS_INFO("adding %d->%d at a cost of %d",path_vertices[i-1]->id,path_vertices[i]->id,costs[i-1]);
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
+  }
 
-  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",id2vertex.size());
+  //print E-Graph
+  for(unsigned int i=0; i<id2vertex.size(); i++){
+    EGraphVertex* v = id2vertex[i];
+    printf("id:%d coord:(",v->id);
+    for(unsigned int j=0; j<v->coord.size(); j++)
+      printf("%d,",v->coord[j]);
+    printf(") neighbors:{");
+    for(unsigned int j=0; j<v->neighbors.size(); j++)
+      printf("(%d,%d),",v->neighbors[j]->id,v->costs[j]);
+    printf("}\n");
+  }
+
+  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
   return true;
 }
 
@@ -160,9 +174,18 @@ void EGraph::discToCont(vector<int> d, vector<double>& c){
     c.push_back(d[i]*res_[i]+min_[i]);
 }
 
-void EGraph::contToDisc(vector<double> c, vector<int>& d){
-  d.clear();
-  for(unsigned int i=0; i<c.size(); i++)
-    d.push_back(int((c[i]-min_[i])/(res_[i])));
+double round(double r) {
+  return (r > 0.0) ? floor(r + 0.5) : ceil(r - 0.5);
 }
 
+void EGraph::contToDisc(vector<double> c, vector<int>& d){
+  d.clear();
+  for(unsigned int i=0; i<c.size(); i++){
+    //printf("%f-%f=%f\n",c[i],min_[i],c[i]-min_[i]);
+    //printf("%f-%f)/%f=%f\n",c[i],min_[i],res_[i],(c[i]-min_[i])/(res_[i]));
+    //printf("int(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],int((c[i]-min_[i])/(res_[i])));
+    //d.push_back(int((c[i]-min_[i])/(res_[i])));
+    d.push_back(round((c[i]-min_[i])/(res_[i])));
+    //printf("huh.... %d\n",d.back());
+  }
+}
