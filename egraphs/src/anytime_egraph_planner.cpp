@@ -51,6 +51,7 @@ AnytimeEGraphPlanner::AnytimeEGraphPlanner(DiscreteSpaceInformation* environment
   repair_time = INFINITECOST;
   searchexpands = 0;
   MaxMemoryCounter = 0;
+  useEGraph_ = true;
 
 #ifndef ROS
   const char* debug = "debug.txt";
@@ -297,7 +298,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
   if(!v)
     return;
 
-  ROS_INFO("get shortcut... %d (is %d < %d)",stateID,v->shortcutIteration,pSearchStateSpace_->searchiteration);
+  //ROS_INFO("get shortcut... %d (is %d < %d)",stateID,v->shortcutIteration,pSearchStateSpace_->searchiteration);
   if(v->shortcutIteration < pSearchStateSpace_->searchiteration){
     vector<EGraph::EGraphVertex*> path;
     vector<int> costs;
@@ -306,16 +307,16 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       EGraph::EGraphVertex* s = path.back();
       egraph_->discToCont(s->coord,coord);
       int s_cost = egraph_heur_->getHeuristic(coord);
-      ROS_INFO("%d (%d %d) %d",s->id,s->coord[0],s->coord[1],s_cost);
+      //ROS_INFO("%d (%d %d) %d",s->id,s->coord[0],s->coord[1],s_cost);
       EGraph::EGraphVertex* best_neighbor = NULL;
       int best_cost = s_cost;
       int trans_cost = 0;
       for(unsigned int i=0; i<s->neighbors.size(); i++){
-        ROS_INFO("check da neighbors");
+        //ROS_INFO("check da neighbors");
         EGraph::EGraphVertex* temp = s->neighbors[i];
         egraph_->discToCont(temp->coord,coord);
         int temp_cost = egraph_heur_->getHeuristic(coord);
-        ROS_INFO("%d (%d %d) %d",temp->id,temp->coord[0],temp->coord[1],temp_cost);
+        //ROS_INFO("%d (%d %d) %d",temp->id,temp->coord[0],temp->coord[1],temp_cost);
         if(temp_cost < best_cost){
           best_cost = temp_cost;
           best_neighbor = temp;
@@ -325,7 +326,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       //if we've reached a local minima then this state is its own shortcut
       //it's already in the path list from last iteration so it doesn't need to be added again
       if(best_cost == s_cost){
-        ROS_INFO("local minima found");
+        //ROS_INFO("local minima found");
         s->shortcuts.push_back(s);
         s->shortcutIteration = pSearchStateSpace_->searchiteration;
         s->shortcut_costs.push_back(0);
@@ -336,7 +337,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       //if we've reach a state that already has its shortcut filled in for this iteration
       //then we can exit early
       if(best_neighbor->shortcutIteration == pSearchStateSpace_->searchiteration){
-        ROS_INFO("cached shortcut");
+        //ROS_INFO("cached shortcut");
         break;
       }
     }
@@ -353,13 +354,13 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
       path[i]->shortcut_costs.push_back(path[i+1]->shortcut_costs.back()+costs[i]);
     }
   }
-  ROS_INFO("done computing shortcut");
+  //ROS_INFO("done computing shortcut");
 
   for(unsigned int i=0; i<v->shortcuts.size(); i++){
     egraph_->discToCont(v->shortcuts[i]->coord,coord);
     SuccIDV.push_back(egraph_env_->getStateID(coord));
     CostV.push_back(v->shortcut_costs[i]);
-    ROS_INFO("%d %d",egraph_env_->getStateID(coord),v->shortcut_costs[i]);
+    //ROS_INFO("%d %d",egraph_env_->getStateID(coord),v->shortcut_costs[i]);
   }
 
   //ROS_INFO("ahhhh");
@@ -367,7 +368,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
     //ROS_INFO("%d %d",SuccIDV[i],CostV[i]);
   //}
 
-  ROS_INFO("done get shortcut");
+  //ROS_INFO("done get shortcut");
 }
 
 void AnytimeEGraphPlanner::getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV){
@@ -404,13 +405,15 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
   //Get the normal successors from the environment
   environment_->GetSuccs(state->MDPstate->StateID, &SuccIDV, &CostV);
 
-  //if we are on the egraph, get get shortcut successors
-  //ROS_INFO("whoa1!");
-  getShortcutSuccessors(state->MDPstate->StateID,SuccIDV,CostV);
-  //ROS_INFO("whoa2!");
+  if(useEGraph_){
+    //if we are on the egraph, get get shortcut successors
+    //ROS_INFO("whoa1!");
+    getShortcutSuccessors(state->MDPstate->StateID,SuccIDV,CostV);
+    //ROS_INFO("whoa2!");
 
-  //if the downprojected state is on the egraph, get snap successors
-  getSnapSuccessors(state->MDPstate->StateID,SuccIDV,CostV);
+    //if the downprojected state is on the egraph, get snap successors
+    getSnapSuccessors(state->MDPstate->StateID,SuccIDV,CostV);
+  }
 
   //iterate through predecessors of s
   for(int sind = 0; sind < (int)SuccIDV.size(); sind++)
@@ -996,33 +999,33 @@ int AnytimeEGraphPlanner::getHeurValue(AEGSearchStateSpace_t* pSearchStateSpace,
 
 //the id path (fromID,toID]
 void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, int cost, vector<int>& ids){
-  ROS_INFO("[AEGPlanner] begin getShortcutPath");
-  printf("%d %d %d\n",fromID,toID,cost);
+  //ROS_INFO("[AEGPlanner] begin getShortcutPath");
+  //printf("%d %d %d\n",fromID,toID,cost);
   vector<double> coord;
   vector<int> d_coord;
   egraph_env_->getCoord(fromID,coord);
   egraph_->contToDisc(coord,d_coord);
   EGraph::EGraphVertex* v1 = egraph_->getVertex(d_coord);
   egraph_env_->getCoord(toID,coord);
-  printf("the coord goes (%f %f %f)\n",coord[0],coord[1],coord[2]);
-  printf("%f/%f=%f\n",coord[2],2*M_PI/16,coord[2]/(2*M_PI/16));
+  //printf("the coord goes (%f %f %f)\n",coord[0],coord[1],coord[2]);
+  //printf("%f/%f=%f\n",coord[2],2*M_PI/16,coord[2]/(2*M_PI/16));
   egraph_->contToDisc(coord,d_coord);
-  printf("the d_coord goes (%d %d %d)\n",d_coord[0],d_coord[1],d_coord[2]);
+  //printf("the d_coord goes (%d %d %d)\n",d_coord[0],d_coord[1],d_coord[2]);
   EGraph::EGraphVertex* v2 = egraph_->getVertex(d_coord);
 
   EGraph::EGraphVertex* v = v1;
 
   ids.clear();
-  ROS_INFO("looking for vertex %d",v2->id);
+  //ROS_INFO("looking for vertex %d",v2->id);
   while(v!=v2){
-    ROS_INFO("at vertex %d",v->id);
+    //ROS_INFO("at vertex %d",v->id);
     bool found = false;
     for(unsigned int i=0; i<v->neighbors.size(); i++){
-      ROS_INFO("  neighbor %d %d",v->neighbors[i]->id,v->costs[i]);
+      //ROS_INFO("  neighbor %d %d",v->neighbors[i]->id,v->costs[i]);
       for(unsigned int j=0; j<v->neighbors[i]->shortcuts.size(); j++){
-        ROS_INFO("    shortcut %d %d",v->neighbors[i]->shortcuts[j]->id,v->neighbors[i]->shortcut_costs[j]);
+        //ROS_INFO("    shortcut %d %d",v->neighbors[i]->shortcuts[j]->id,v->neighbors[i]->shortcut_costs[j]);
         if(v->neighbors[i]->shortcuts[j]==v2 && v->neighbors[i]->shortcut_costs[j]+v->costs[i] == cost){
-          ROS_INFO("found!");
+          //ROS_INFO("found!");
           found = true;
           int c = v->costs[i];
           cost -= c;
@@ -1030,10 +1033,10 @@ void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, int cost, vecto
           egraph_->discToCont(v->coord,coord);
           ids.push_back(egraph_env_->getStateID(coord));
           
-          ROS_INFO("wooo pushin the costs back %d",c);
+          //ROS_INFO("wooo pushin the costs back %d",c);
           egraph_path_costs_.push_back(c);
           if(v!=v2){
-            ROS_INFO("....and the vert %d",v->id);
+            //ROS_INFO("....and the vert %d",v->id);
             egraph_path_.push_back(coord);
           }
 
@@ -1044,7 +1047,7 @@ void AnytimeEGraphPlanner::getShortcutPath(int fromID, int toID, int cost, vecto
         break;
     }
   }
-  ROS_INFO("[AEGPlanner] end getShortcutPath");
+  //ROS_INFO("[AEGPlanner] end getShortcutPath");
 }
 
 
@@ -1118,14 +1121,14 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
       if(SuccIDV[i] == searchstateinfo->bestnextstate->StateID && CostV[i]<actioncost)
         actioncost = CostV[i];
     }
-    if(actioncost == INFINITECOST){
+    if(useEGraph_ && actioncost == INFINITECOST){
       SuccIDV.clear();
       CostV.clear();
       getShortcutSuccessors(state->StateID,SuccIDV,CostV);
       unsigned int i;
       ROS_INFO("shortcut maybe? from %d",state->StateID);
       for(i=0; i<SuccIDV.size(); i++){
-        ROS_INFO("checking %d %d",searchstateinfo->bestnextstate->StateID,CostV[i]);
+        //ROS_INFO("checking %d %d",searchstateinfo->bestnextstate->StateID,CostV[i]);
         if(SuccIDV[i] == searchstateinfo->bestnextstate->StateID && CostV[i]<actioncost)
           actioncost = CostV[i];
       }
@@ -1374,9 +1377,16 @@ int AnytimeEGraphPlanner::replan(vector<int>* solution_stateIDs_V, EGraphReplanP
   return replan(solution_stateIDs_V, params, &solcost);
 }
 int AnytimeEGraphPlanner::replan(vector<int>* solution_stateIDs_V, EGraphReplanParams params, int* solcost){
-  pSearchStateSpace_->epsE = params.epsE;
-  initial_epsE = params.epsE;
-  final_epsE = params.final_epsE;
+  if(useEGraph_){
+    pSearchStateSpace_->epsE = params.epsE;
+    initial_epsE = params.epsE;
+    final_epsE = params.final_epsE;
+  }
+  else{
+    pSearchStateSpace_->epsE = 1.0;
+    initial_epsE = 1.0;
+    final_epsE = 1.0;
+  }
   dec_epsE = params.dec_epsE;
   egraph_heur_->setEpsE(pSearchStateSpace_->epsE);
   finitial_eps = params.initial_eps;

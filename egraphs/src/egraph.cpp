@@ -61,6 +61,7 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   }
 
   //print E-Graph
+  /*
   for(unsigned int i=0; i<id2vertex.size(); i++){
     EGraphVertex* v = id2vertex[i];
     printf("id:%d coord:(",v->id);
@@ -71,6 +72,7 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
       printf("(%d,%d),",v->neighbors[j]->id,v->costs[j]);
     printf("}\n");
   }
+  */
 
   ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
   return true;

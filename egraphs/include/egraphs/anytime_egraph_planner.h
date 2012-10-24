@@ -198,6 +198,8 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     */
     virtual int set_search_mode(bool bSearchUntilFirstSolution);
 
+    void useEGraph(bool use){useEGraph_ = use;};
+
     /** \brief returns the suboptimality bound on the currently found solution
     */
     virtual double get_solution_eps() const {return pSearchStateSpace_->eps_satisfied;};
@@ -263,6 +265,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     EGraph* egraph_;
     EGraphable* egraph_env_;
     EGraphHeuristic* egraph_heur_;
+    bool useEGraph_;
 
     bool planner_ok_;
     boost::thread* egraph_thread_;
