@@ -11,7 +11,26 @@ EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolut
 }
 
 EGraph::EGraph(string filename){
+  //TODO: This is an arbitrary size...
+  hashtable.resize(32*1024);
   load(filename);
+}
+
+EGraph::~EGraph(){
+  clearEGraph();
+}
+
+void EGraph::clearEGraph(){
+  min_.clear();
+  max_.clear();
+  res_.clear();
+  names_.clear();
+  hashtable.clear();
+
+  for(unsigned int i=0; i<id2vertex.size(); i++)
+    delete id2vertex[i];
+
+  id2vertex.clear();
 }
 
 bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
@@ -60,8 +79,12 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
   }
 
-  //print E-Graph
-  /*
+  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
+  return true;
+}
+
+//print E-Graph
+void EGraph::print(){
   for(unsigned int i=0; i<id2vertex.size(); i++){
     EGraphVertex* v = id2vertex[i];
     printf("id:%d coord:(",v->id);
@@ -72,18 +95,135 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
       printf("(%d,%d),",v->neighbors[j]->id,v->costs[j]);
     printf("}\n");
   }
-  */
-
-  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
-  return true;
 }
 
 bool EGraph::save(string filename){
-  return false;
+  FILE* fout = fopen(filename.c_str(),"w");
+  if(!fout){
+    ROS_ERROR("Could not open file \"%s\" to save E-Graph",filename.c_str());
+    return false;
+  }
+
+  //save the dimension names, min, max, and resolution
+  //for each dimension there is a line with format: "name min max resolution"
+  fprintf(fout,"%d\n",int(names_.size()));
+  for(unsigned int i=0; i<names_.size(); i++)
+    fprintf(fout,"%s %f %f %f\n",names_[i].c_str(),min_[i],max_[i],res_[i]);
+
+  //save the id2vertex table
+  //one line for each vertex
+  //"coord_values num_neighbors neighbor_ids costs_to_neighbors"
+  fprintf(fout,"%d\n",int(id2vertex.size()));
+  for(unsigned int i=0; i<id2vertex.size(); i++){
+    EGraphVertex* v = id2vertex[i];
+    vector<double> coord;
+    discToCont(v->coord,coord);
+    for(unsigned int j=0; j<coord.size(); j++)
+      fprintf(fout,"%f ",coord[j]);
+    fprintf(fout,"%d ",int(v->neighbors.size()));
+    for(unsigned int j=0; j<v->neighbors.size(); j++)
+      fprintf(fout,"%d ",v->neighbors[j]->id);
+    for(unsigned int j=0; j<v->costs.size(); j++)
+      fprintf(fout,"%d ",v->costs[j]);
+    fprintf(fout,"\n");
+  }
+
+  return true;
 }
 
-bool EGraph::load(string filename){
-  return false;
+bool EGraph::load(string filename, bool clearCurrentEGraph){
+  if(clearCurrentEGraph)
+    clearEGraph();
+  else{
+    ROS_ERROR("Loading an E-Graph without clearing the old one is not supported yet...");
+    return false;
+  }
+
+  FILE* fin = fopen(filename.c_str(),"r");
+  if(!fin){
+    ROS_ERROR("Could not open file \"%s\" to load E-Graph",filename.c_str());
+    return false;
+  }
+
+  //read the number of dimensions
+  int num_dimensions;
+  if(fscanf(fin,"%d", &num_dimensions) != 1){
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    return false;
+  }
+
+  //read in all the dimension details
+  char name[128];
+  double min,max,res;
+  for(int i=0; i<num_dimensions; i++){
+    if(fscanf(fin,"%s %lf %lf %lf",name,&min,&max,&res) != 4){
+      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      return false;
+    }
+    names_.push_back(name);
+    min_.push_back(min);
+    max_.push_back(max);
+    res_.push_back(res);
+  }
+
+  //read in the number of vertices
+  int num_vertices;
+  if(fscanf(fin,"%d", &num_vertices) != 1){
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    return false;
+  }
+  for(int i=0; i<num_vertices; i++){
+    EGraphVertex* v = new EGraphVertex();
+    v->id = i;
+    id2vertex.push_back(v);
+  }
+
+  //read in each vertex
+  for(int i=0; i<num_vertices; i++){
+    //read in the vertex coordinate
+    EGraphVertex* v = id2vertex[i];
+    double val;
+    vector<double> coord;
+    for(int j=0; j<num_dimensions; j++){
+      if(fscanf(fin,"%lf",&val) != 1){
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        return false;
+      }
+      coord.push_back(val);
+      contToDisc(coord,v->coord);
+    }
+    int idx = getHashBin(v->coord);
+    hashtable[idx].push_back(v);
+
+    //read in the number of neighbors
+    int num_neighbors;
+    if(fscanf(fin,"%d", &num_neighbors) != 1){
+      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      return false;
+    }
+
+    //read in the neighbors
+    int id;
+    for(int j=0; j<num_neighbors; j++){
+      if(fscanf(fin,"%d",&id) != 1){
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        return false;
+      }
+      v->neighbors.push_back(id2vertex[id]);
+    }
+
+    //read in the costs to the neighbors
+    int cost;
+    for(int j=0; j<num_neighbors; j++){
+      if(fscanf(fin,"%d",&cost) != 1){
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        return false;
+      }
+      v->costs.push_back(cost);
+    }
+  }
+
+  return true;
 }
 
 void EGraph::collisionCheck(){

@@ -36,6 +36,10 @@ class EGraph{
     //this will load the E-Graph using the parameters (min,max,resolution,names) stored in the file
     EGraph(string filename);
 
+    ~EGraph();
+
+    void clearEGraph();
+
     //add path takes a vector of names, and a vector of vectors of doubles (the waypoints on the path), a vector of costs
     //this add the edges to the e-graph. 
     //no longer computes all-pairs! this simplifies the e-graph data structure and drops computation between queries to almost nothing. 
@@ -43,11 +47,13 @@ class EGraph{
     //finally this will call setEGraph on the EGraphable's EGraphHeuristic to prepare it for the next query
     bool addPath(vector<vector<double> >& coords, vector<int>& costs);
 
+    void print();
+
     //save egraph
     bool save(string filename);
 
     //load egraph
-    bool load(string filename);
+    bool load(string filename, bool clearCurrentEGraph=true);
 
     //collision check
     void collisionCheck();
