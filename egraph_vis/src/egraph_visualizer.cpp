@@ -18,11 +18,13 @@ EGraphVisualizer::~EGraphVisualizer(){
 void EGraphVisualizer::visualize(){
   server_->clear();
   vis_table_.clear();
-  vis_table_.resize(id2vertex.size());
+  vis_table_.resize(eg_->id2vertex.size());
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     EGraph::EGraphVertex* v = eg_->id2vertex[i];
     addState(v,false);
 
+    vector<double> coord;
+    eg_->discToCont(v->coord,coord);
     for(unsigned int j=0; j<v->neighbors.size(); j++){
       EGraph::EGraphVertex* u = v->neighbors[j];
       if(v->id<u->id){
@@ -85,17 +87,17 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
   if(feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT){
     if(feedback->menu_entry_id == 1){
       //Show/Hide Neighborhood
-      if(vis_table_[v->id].neighborhood){
+      if(vis_table_[v->id].neighbors){
         //hide
         for(unsigned int i=0; i<v->neighbors.size(); i++)
-          server_->erase(string("egraph_neighbor_")+boost::lexical_cast<string>(v->id)+string("_")+boost::lexical_cast<string>(i)).c_str();
-        vis_table_[v->id].neighborhood = false;
+          server_->erase((string("egraph_neighbor_")+boost::lexical_cast<string>(v->id)+string("_")+boost::lexical_cast<string>(i)).c_str());
+        vis_table_[v->id].neighbors = false;
       }
       else{
         //show
         for(unsigned int i=0; i<v->neighbors.size(); i++)
           addNeighbor(v,i);
-        vis_table_[v->id].neighborhood = true;
+        vis_table_[v->id].neighbors = true;
       }
     }
     else if(feedback->menu_entry_id == 2){
@@ -130,10 +132,11 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
 void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
   vector<double> coord;
   eg_->discToCont(v->coord,coord);
+  visualization_msgs::Marker m;
   if(detailed)
-    visualization_msgs::Marker m = converter_->stateToDetailedVisualizationMarker(coord);
+    m = converter_->stateToDetailedVisualizationMarker(coord);
   else
-    visualization_msgs::Marker m = converter_->stateToVisualizationMarker(coord);
+    m = converter_->stateToVisualizationMarker(coord);
   visualization_msgs::InteractiveMarker int_marker;
   int_marker.header.frame_id = m.header.frame_id;
   int_marker.pose = m.pose;
