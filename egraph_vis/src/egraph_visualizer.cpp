@@ -17,29 +17,11 @@ EGraphVisualizer::~EGraphVisualizer(){
 
 void EGraphVisualizer::visualize(){
   server_->clear();
+  vis_table_.clear();
+  vis_table_.resize(id2vertex.size());
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     EGraph::EGraphVertex* v = eg_->id2vertex[i];
-    vector<double> coord;
-    eg_->discToCont(v->coord,coord);
-    visualization_msgs::Marker m = converter_->stateToVisualizationMarker(coord);
-    visualization_msgs::InteractiveMarker int_marker;
-    int_marker.header.frame_id = m.header.frame_id;
-    int_marker.pose = m.pose;
-    int_marker.scale = 1;
-    int_marker.description = "";
-    int_marker.name = (string("egraph_vertex_") + boost::lexical_cast<string>(i)).c_str();
-
-    visualization_msgs::InteractiveMarkerControl control;
-    control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MENU;
-    control.name = (string("egraph_menu_control_") + boost::lexical_cast<string>(i)).c_str();
-
-    control.markers.push_back(m);
-    control.always_visible = true;
-    int_marker.controls.push_back(control);
-
-    server_->insert(int_marker);
-    server_->setCallback(int_marker.name, boost::bind(&EGraphVisualizer::processFeedback, this, _1));
-    menu_handler_.apply(*server_, int_marker.name);
+    addState(v,false);
 
     for(unsigned int j=0; j<v->neighbors.size(); j++){
       EGraph::EGraphVertex* u = v->neighbors[j];
@@ -103,25 +85,98 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
   if(feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::MENU_SELECT){
     if(feedback->menu_entry_id == 1){
       //Show/Hide Neighborhood
-
+      if(vis_table_[v->id].neighborhood){
+        //hide
+        for(unsigned int i=0; i<v->neighbors.size(); i++)
+          server_->erase(string("egraph_neighbor_")+boost::lexical_cast<string>(v->id)+string("_")+boost::lexical_cast<string>(i)).c_str();
+        vis_table_[v->id].neighborhood = false;
+      }
+      else{
+        //show
+        for(unsigned int i=0; i<v->neighbors.size(); i++)
+          addNeighbor(v,i);
+        vis_table_[v->id].neighborhood = true;
+      }
     }
     else if(feedback->menu_entry_id == 2){
       //Show/Hide Shortcuts
-
+      
     }
   }
   else if(feedback->event_type == visualization_msgs::InteractiveMarkerFeedback::MOUSE_DOWN){
     //Draw the detailed version of this vertex (this has the same menu controls as the regular vertex)
-
     if(isDetailed){
       //if this is a detailed vertex, delete it from the server
-      
+      server_->erase(feedback->marker_name);
     }
     else{
-      //if this is a regular vertex and we haven't already drawn the detailed one, add it to the server
-      
+      //we left clicked on a regular vertex
+      if(vis_table_[v->id].detailed){
+        //the detailed one was already drawn so delete it!
+        string detailed_name = feedback->marker_name + string("_detailed");
+        server_->erase(detailed_name);
+        vis_table_[v->id].detailed = false;
+      }
+      else{
+        //we will draw the detailed version of the state
+        addState(v,true);
+        vis_table_[v->id].detailed = true;
+      }
     }
   }
   server_->applyChanges();
 }
 
+void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
+  vector<double> coord;
+  eg_->discToCont(v->coord,coord);
+  if(detailed)
+    visualization_msgs::Marker m = converter_->stateToDetailedVisualizationMarker(coord);
+  else
+    visualization_msgs::Marker m = converter_->stateToVisualizationMarker(coord);
+  visualization_msgs::InteractiveMarker int_marker;
+  int_marker.header.frame_id = m.header.frame_id;
+  int_marker.pose = m.pose;
+  int_marker.scale = 1;
+  int_marker.description = "";
+  if(detailed)
+    int_marker.name = (string("egraph_vertex_") + boost::lexical_cast<string>(v->id) + string("_detailed")).c_str();
+  else
+    int_marker.name = (string("egraph_vertex_") + boost::lexical_cast<string>(v->id)).c_str();
+
+  visualization_msgs::InteractiveMarkerControl control;
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::MENU;
+  if(detailed)
+    control.name = (string("egraph_menu_control_") + boost::lexical_cast<string>(v->id) + string("_detailed")).c_str();
+  else
+    control.name = (string("egraph_menu_control_") + boost::lexical_cast<string>(v->id)).c_str();
+
+  control.markers.push_back(m);
+  control.always_visible = true;
+  int_marker.controls.push_back(control);
+
+  server_->insert(int_marker);
+  server_->setCallback(int_marker.name, boost::bind(&EGraphVisualizer::processFeedback, this, _1));
+  menu_handler_.apply(*server_, int_marker.name);
+}
+
+void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
+  vector<double> coord;
+  eg_->discToCont(v->coord,coord);
+  visualization_msgs::Marker m = converter_->stateToDetailedVisualizationMarker(coord);
+  visualization_msgs::InteractiveMarker int_marker;
+  int_marker.header.frame_id = m.header.frame_id;
+  int_marker.pose = m.pose;
+  int_marker.scale = 1;
+  int_marker.description = "";
+  int_marker.name = (string("egraph_neighbor_")+boost::lexical_cast<string>(v->id)+string("_")+boost::lexical_cast<string>(neighbor)).c_str();
+
+  visualization_msgs::InteractiveMarkerControl control;
+  control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
+
+  control.markers.push_back(m);
+  control.always_visible = true;
+  int_marker.controls.push_back(control);
+
+  server_->insert(int_marker);
+}

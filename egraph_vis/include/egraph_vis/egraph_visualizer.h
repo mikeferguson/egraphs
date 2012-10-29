@@ -14,13 +14,30 @@ class EGraphVisualizer{
     void visualize();
 
   protected:
+    class EGraphVisEntry{
+      public:
+        EGraphVisEntry(){
+          detailed = false;
+          neighbors = false;
+          shortcuts = false;
+        };
+
+        bool detailed;
+        bool neighbors;
+        bool shortcuts;
+    };
+
     void processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback);
+    void addNeighbor(EGraph::EGraphVertex* v, int neighbor);
+    void addState(EGraph::EGraphVertex* v, bool detailed);
 
     EGraph* eg_;
     EGraphMarkerMaker* converter_;
 
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     interactive_markers::MenuHandler menu_handler_;
+
+    vector<EGraphVisEntry> vis_table_;
 };
 
 #endif
