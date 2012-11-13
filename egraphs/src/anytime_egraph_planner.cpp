@@ -1168,10 +1168,14 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
     if(egraph_path_costs_.size() < egraph_path_.size())
       egraph_path_costs_.push_back(actioncost);
 
-    if(state->StateID == goalstate->StateID)
+    if(state->StateID == goalstate->StateID){
+      //printf("***");
       egraph_env_->getGoalCoord(egraph_path_.back(),coord);
-    else
+    }
+    else{
+      //printf(".");
       egraph_env_->getCoord(state->StateID,coord);
+    }
     egraph_path_.push_back(coord);
   }
 

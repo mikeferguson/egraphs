@@ -57,7 +57,7 @@ void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> co
 }
 
 void EGraph3dGridHeuristic::runPrecomputations(){
-  ROS_INFO("begin precomputations");
+  //ROS_INFO("begin precomputations");
   //refill the cell to egraph vertex mapping
   for(int i=0; i<gridSize_; i++)
     heur[i].egraph_vertices.clear();
@@ -67,13 +67,14 @@ void EGraph3dGridHeuristic::runPrecomputations(){
   ROS_INFO("down project edges...");
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     eg_->discToCont(eg_->id2vertex[i]->coord,c_coord);
-    ROS_INFO("size of coord %d",c_coord.size());
+    //ROS_INFO("size of coord %d",c_coord.size());
     downProject_->downProject(c_coord,dp);
-    ROS_INFO("size of coord %d",dp.size());
-    ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
+    //ROS_INFO("size of coord %d",dp.size());
+    //ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
     heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
+    //ROS_INFO("push_back");
   }
-  ROS_INFO("done precomputations");
+  //ROS_INFO("done precomputations");
 }
 
 void EGraph3dGridHeuristic::setGoal(vector<double> goal){
