@@ -18,6 +18,13 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
       return true;
     };
 
+    virtual void getGoalHeuristicCoord(vector<double>& coord){
+    };
+
+    virtual bool getGoalCoord(vector<double>& parent, vector<double>& goal){
+      return true;
+    }
+
     virtual int getStateID(vector<double>& coord){
       return 0;
     };

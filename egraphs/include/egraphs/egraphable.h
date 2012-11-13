@@ -20,6 +20,10 @@ class EGraphable{
     //-we will never call getCoord on the goal (because it is possible we don't know what the goal state looks like)
     virtual bool getCoord(int id, vector<double>& coord) = 0;
 
+    virtual void getGoalHeuristicCoord(vector<double>& coord) = 0;
+
+    virtual bool getGoalCoord(vector<double>& parent, vector<double>& goal) = 0;
+
     virtual int getStateID(vector<double>& coord) = 0;
 
     //in the future we could ask them to implement features for their environment....we could have some built in ones like 2D patch and 3D patch

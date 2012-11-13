@@ -22,7 +22,7 @@ set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 #rosbuild_gensrv()
 
 #common commands for building c++ executables and libraries
-rosbuild_add_library(egraphs src/egraph.cpp src/egraph_2d_grid_heuristic.cpp src/anytime_egraph_planner.cpp)
+rosbuild_add_library(egraphs src/egraph.cpp src/egraph_2d_grid_heuristic.cpp src/egraph_3d_grid_heuristic.cpp src/anytime_egraph_planner.cpp)
 target_link_libraries(egraphs sbpl)
 #rosbuild_add_boost_directories()
 #rosbuild_link_boost(${PROJECT_NAME} thread)

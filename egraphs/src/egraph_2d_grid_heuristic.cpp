@@ -100,7 +100,11 @@ void EGraph2dGridHeuristic::setGoal(vector<double> goal){
   }
   else{
     //down project the goal state and add it to the queue
-    downProject_->downProject(goal,dp);
+    //downProject_->downProject(goal,dp);
+
+    //assume we are given the goal already down projected
+    for(unsigned int i=0; i<goal.size(); i++)
+      dp.push_back(int(goal[i]));
     goal_dp_ = dp;
   }
   CKey key;

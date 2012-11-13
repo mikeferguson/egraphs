@@ -93,7 +93,7 @@ AnytimeEGraphPlanner::~AnytimeEGraphPlanner()
   }
   SBPL_FCLOSE(fDeb);
 
-
+  ROS_ERROR("shutting down?");
   boost::unique_lock<boost::mutex> lock(egraph_mutex_);
   planner_ok_ = false;
   egraph_cond_.notify_one();
@@ -190,6 +190,9 @@ int AnytimeEGraphPlanner::ComputeHeuristic(CMDPSTATE* MDPstate, AEGSearchStateSp
     //forward search: heur = distance from state to searchgoal which is Goal AEGState
     //int retv =  environment_->GetGoalHeuristic(MDPstate->StateID);
     //return retv;
+    
+    if(pSearchStateSpace->searchgoalstate->StateID==MDPstate->StateID)
+      return 0;
 
     vector<double> coord;
     egraph_env_->getCoord(MDPstate->StateID,coord);
@@ -1164,9 +1167,21 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
     //if we used a shortcut...in this case we already added
     if(egraph_path_costs_.size() < egraph_path_.size())
       egraph_path_costs_.push_back(actioncost);
-    egraph_env_->getCoord(state->StateID,coord);
+
+    if(state->StateID == goalstate->StateID)
+      egraph_env_->getGoalCoord(egraph_path_.back(),coord);
+    else
+      egraph_env_->getCoord(state->StateID,coord);
     egraph_path_.push_back(coord);
   }
+
+  //TODO: confirm that we can get the state ids back from the coordinates
+  for(unsigned int i=0; i<egraph_path_.size(); i++){
+    int id = egraph_env_->getStateID(egraph_path_[i]);
+    if(id != wholePathIds[i])
+      ROS_WARN("uh oh. %d is not %d",id,wholePathIds[i]);
+  }
+
 
   ROS_INFO("[AEGPlanner] %f percent of the path came from shortcuts (%d)\n",((double)shortcutCount)/(wholePathIds.size()-1),shortcutCount);
   return wholePathIds;
@@ -1300,6 +1315,7 @@ bool AnytimeEGraphPlanner::Search(AEGSearchStateSpace_t* pSearchStateSpace, vect
 
   }
   repair_time = old_repair_time;
+  ROS_ERROR("Main loop done");
 
 
 #if DEBUG
@@ -1325,6 +1341,7 @@ bool AnytimeEGraphPlanner::Search(AEGSearchStateSpace_t* pSearchStateSpace, vect
     ret = true;
 
     //TODO:Mike pick up here!!! wake up the maintain egraph thread!
+    ROS_ERROR("wake up the thread...");
     boost::unique_lock<boost::mutex> lock(egraph_mutex_);
     egraph_cond_.notify_one();
     lock.unlock();
@@ -1441,7 +1458,8 @@ int AnytimeEGraphPlanner::set_goal(int goal_stateID)
   SBPL_PRINTF("planner: setting goal to %d\n", goal_stateID);
   environment_->PrintState(goal_stateID, true, stdout);
   vector<double> coord;
-  egraph_env_->getCoord(goal_stateID,coord);
+  //egraph_env_->getCoord(goal_stateID,coord);
+  egraph_env_->getGoalHeuristicCoord(coord);
   egraph_heur_->setGoal(coord);
 
   if(bforwardsearch)
