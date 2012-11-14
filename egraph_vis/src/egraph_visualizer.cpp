@@ -30,11 +30,11 @@ void EGraphVisualizer::visualize(){
       if(v->id<u->id){
         vector<double> coord2;
         eg_->discToCont(u->coord,coord2);
-        visualization_msgs::Marker m = converter_->edgeToVisualizationMarker(coord,coord2);
+        visualization_msgs::MarkerArray m = converter_->edgeToVisualizationMarker(coord,coord2);
 
         visualization_msgs::InteractiveMarker int_marker;
-        int_marker.header.frame_id = m.header.frame_id;
-        int_marker.pose = m.pose;
+        int_marker.header.frame_id = m.markers.front().header.frame_id;
+        int_marker.pose = m.markers.front().pose;
         int_marker.scale = 1;
         int_marker.description = "";
         int_marker.name = (string("egraph_edge_") + boost::lexical_cast<string>(i) + string("_") + boost::lexical_cast<string>(j)).c_str();
@@ -42,7 +42,8 @@ void EGraphVisualizer::visualize(){
         visualization_msgs::InteractiveMarkerControl control;
         control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
 
-        control.markers.push_back(m);
+        for(unsigned int i=0; i<m.markers.size(); i++)
+          control.markers.push_back(m.markers[i]);
         control.always_visible = true;
         int_marker.controls.push_back(control);
 
@@ -132,14 +133,14 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
 void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
   vector<double> coord;
   eg_->discToCont(v->coord,coord);
-  visualization_msgs::Marker m;
+  visualization_msgs::MarkerArray m;
   if(detailed)
     m = converter_->stateToDetailedVisualizationMarker(coord);
   else
     m = converter_->stateToVisualizationMarker(coord);
   visualization_msgs::InteractiveMarker int_marker;
-  int_marker.header.frame_id = m.header.frame_id;
-  int_marker.pose = m.pose;
+  int_marker.header.frame_id = m.markers.front().header.frame_id;
+  int_marker.pose = m.markers.front().pose;
   int_marker.scale = 1;
   int_marker.description = "";
   if(detailed)
@@ -154,7 +155,8 @@ void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
   else
     control.name = (string("egraph_menu_control_") + boost::lexical_cast<string>(v->id)).c_str();
 
-  control.markers.push_back(m);
+  for(unsigned int i=0; i<m.markers.size(); i++)
+    control.markers.push_back(m.markers[i]);
   control.always_visible = true;
   int_marker.controls.push_back(control);
 
@@ -166,10 +168,10 @@ void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
 void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
   vector<double> coord;
   eg_->discToCont(v->coord,coord);
-  visualization_msgs::Marker m = converter_->stateToDetailedVisualizationMarker(coord);
+  visualization_msgs::MarkerArray m = converter_->stateToDetailedVisualizationMarker(coord);
   visualization_msgs::InteractiveMarker int_marker;
-  int_marker.header.frame_id = m.header.frame_id;
-  int_marker.pose = m.pose;
+  int_marker.header.frame_id = m.markers.front().header.frame_id;
+  int_marker.pose = m.markers.front().pose;
   int_marker.scale = 1;
   int_marker.description = "";
   int_marker.name = (string("egraph_neighbor_")+boost::lexical_cast<string>(v->id)+string("_")+boost::lexical_cast<string>(neighbor)).c_str();
@@ -177,7 +179,8 @@ void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
   visualization_msgs::InteractiveMarkerControl control;
   control.interaction_mode = visualization_msgs::InteractiveMarkerControl::NONE;
 
-  control.markers.push_back(m);
+  for(unsigned int i=0; i<m.markers.size(); i++)
+    control.markers.push_back(m.markers[i]);
   control.always_visible = true;
   int_marker.controls.push_back(control);
 

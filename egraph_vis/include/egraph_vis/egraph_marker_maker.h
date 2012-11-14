@@ -2,14 +2,14 @@
 #define EGRAPH_MARKER_MAKER_H
 
 #include<vector>
-#include<visualization_msgs/Marker.h>
+#include<visualization_msgs/MarkerArray.h>
 using namespace std;
 
 class EGraphMarkerMaker{
   public:
-    virtual visualization_msgs::Marker stateToVisualizationMarker(vector<double> coord) = 0;
-    virtual visualization_msgs::Marker edgeToVisualizationMarker(vector<double> coord, vector<double> coord2) = 0;
-    virtual visualization_msgs::Marker stateToDetailedVisualizationMarker(vector<double> coord) = 0;
+    virtual visualization_msgs::MarkerArray stateToVisualizationMarker(vector<double> coord) = 0;
+    virtual visualization_msgs::MarkerArray edgeToVisualizationMarker(vector<double> coord, vector<double> coord2) = 0;
+    virtual visualization_msgs::MarkerArray stateToDetailedVisualizationMarker(vector<double> coord) = 0;
 };
 
 #endif
