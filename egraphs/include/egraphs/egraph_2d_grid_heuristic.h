@@ -22,7 +22,7 @@ class EGraph2dGridHeuristic : public EGraphHeuristic{
     void setGrid(vector<vector<bool> >& grid);
     void setGoal(vector<double> goal);
     int getHeuristic(vector<double> coord);
-    void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices);
+    void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices);
     void runPrecomputations();
 
   protected:

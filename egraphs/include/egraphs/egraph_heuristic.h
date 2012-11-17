@@ -29,7 +29,7 @@ class EGraphHeuristic{
     //if the goal vector is empty it means to reuse the last goal
     virtual void setGoal(vector<double> goal) = 0;
     virtual int getHeuristic(vector<double> coord) = 0;
-    virtual void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices) = 0;
+    virtual void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices) = 0;
 
     virtual void runPrecomputations(){};
 

@@ -49,10 +49,11 @@ void EGraph3dGridHeuristic::setGrid(vector<vector<vector<bool> > >& grid){
 
 }
 
-void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices){
+void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   vertices.clear();
+  printf("verts in cell: %d\n",heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.size());
   vertices = heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices;
 }
 
@@ -70,7 +71,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
     //ROS_INFO("size of coord %d",c_coord.size());
     downProject_->downProject(c_coord,dp);
     //ROS_INFO("size of coord %d",dp.size());
-    //ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
+    ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
     heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
     //ROS_INFO("push_back");
   }
@@ -126,6 +127,9 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];
+
+  if(cell->cost==-1)
+    return INFINITECOST;
   
   CKey key;
   //compute distance from H to all cells and note for each cell, what node in H was the closest
@@ -181,6 +185,21 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
         }
       }
     }
+
+    /*
+    if(cell->closed){
+      FILE* fout = fopen("heur3d.csv","w");
+      for(unsigned int x=0; x<width_; x++){
+        for(unsigned int y=0; y<height_; y++){
+          for(unsigned int z=0; z<length_; z++){
+            int id = HEUR_XYZ2ID(x,y,z);
+            fprintf(fout,"%d %d %d %d\n",x,y,z,heur[id].cost);
+          }
+        }
+      }
+      fclose(fout);
+    }
+    */
   }
   return cell->cost;
 }

@@ -56,7 +56,7 @@ void EGraph2dGridHeuristic::setGrid(vector<vector<bool> >& grid){
 */
 }
 
-void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*> vertices){
+void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   vertices.clear();
@@ -144,6 +144,9 @@ int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   EGraph2dGridHeuristicCell* cell = &heur[HEUR_XY2ID(dp[0],dp[1])];
+
+  if(cell->cost==-1)
+    return INFINITECOST;
   
   CKey key;
   //compute distance from H to all cells and note for each cell, what node in H was the closest
