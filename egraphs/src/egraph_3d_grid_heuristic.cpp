@@ -53,7 +53,7 @@ void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> co
   vector<int> dp;
   downProject_->downProject(coord,dp);
   vertices.clear();
-  printf("verts in cell: %d\n",heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.size());
+  //printf("verts in cell: %d\n",heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.size());
   vertices = heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices;
 }
 
@@ -71,7 +71,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
     //ROS_INFO("size of coord %d",c_coord.size());
     downProject_->downProject(c_coord,dp);
     //ROS_INFO("size of coord %d",dp.size());
-    ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
+    //ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
     heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
     //ROS_INFO("push_back");
   }

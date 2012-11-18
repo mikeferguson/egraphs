@@ -347,7 +347,7 @@ void AnytimeEGraphPlanner::getShortcutSuccessors(int stateID, vector<int>& SuccI
     EGraph::EGraphVertex* theShortcut = path.back();
     //ROS_INFO("fill in path with %d (%d %d)",theShortcut->id,theShortcut->coord[0],theShortcut->coord[1]);
     for(int i=path.size()-2; i>=0; i--){
-      ROS_INFO("huh %d %d",path[i]->id,path[i+1]->id);
+      //ROS_INFO("huh %d %d",path[i]->id,path[i+1]->id);
       path[i]->shortcuts.push_back(theShortcut);
       path[i]->shortcutIteration = pSearchStateSpace_->searchiteration;
       //ROS_INFO("hmm");
@@ -384,7 +384,7 @@ void AnytimeEGraphPlanner::getSnapSuccessors(int stateID, vector<int>& SuccIDV, 
   vector<double> new_coord;
   int new_id;
   int new_cost;
-  ROS_INFO("%d possible snaps",vertices.size());
+  //ROS_INFO("%d possible snaps",vertices.size());
   for(unsigned int i=0; i<vertices.size(); i++){
     egraph_->discToCont(vertices[i]->coord,new_coord);
     if(egraph_env_->snap(coord,new_coord,new_id,new_cost)){
@@ -396,10 +396,10 @@ void AnytimeEGraphPlanner::getSnapSuccessors(int stateID, vector<int>& SuccIDV, 
         }
       }
       if(duplicate){
-        printf("duplicate snap...\n");
+        //printf("duplicate snap...\n");
         continue;
       }
-      printf("snap from %d to %d with cost %d\n",stateID,new_id,new_cost);
+      //printf("snap from %d to %d with cost %d\n",stateID,new_id,new_cost);
       SuccIDV.push_back(new_id);
       CostV.push_back(new_cost);
     }
@@ -415,7 +415,7 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
   CKey key;
   AEGState *succstate;
 
-  ROS_ERROR("expanding g:%d h:%d f:%d",state->v,state->h,int(state->v+state->h*pSearchStateSpace->eps));
+  //ROS_ERROR("expanding g:%d h:%d f:%d",state->v,state->h,int(state->v+state->h*pSearchStateSpace->eps));
 
   //Get the normal successors from the environment
   environment_->GetSuccs(state->MDPstate->StateID, &SuccIDV, &CostV);
