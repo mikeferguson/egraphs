@@ -61,10 +61,18 @@ class CList;
 
 class EGraphReplanParams : public ReplanParams{
   public:
-    EGraphReplanParams(double time):ReplanParams(time) {};
+    EGraphReplanParams(double time):ReplanParams(time) {
+      epsE = 10.0;
+      final_epsE = 1.0;
+      dec_epsE = 1.0;
+      feedback_path = true;
+      use_egraph = true;
+    };
     double epsE;
     double final_epsE;
     double dec_epsE;
+    bool feedback_path;
+    bool use_egraph;
 };
 
 class EGraphPlannerStats : public PlannerStats{
@@ -256,6 +264,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     double initial_epsE, final_epsE, dec_epsE;
     double repair_time;
     bool use_repair_time;
+    bool feedback_path;
 
     vector<EGraphPlannerStats> stats;
 

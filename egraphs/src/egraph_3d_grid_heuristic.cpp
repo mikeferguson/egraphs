@@ -67,7 +67,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
   vector<double> c_coord;
   ROS_INFO("down project edges...");
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
-    eg_->discToCont(eg_->id2vertex[i]->coord,c_coord);
+    eg_->discToCont(eg_->id2vertex[i],c_coord);
     //ROS_INFO("size of coord %d",c_coord.size());
     downProject_->downProject(c_coord,dp);
     //ROS_INFO("size of coord %d",dp.size());
@@ -171,7 +171,7 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
     vector<double> c_coord;
     for(unsigned int i=0; i<state->egraph_vertices.size(); i++){
       for(unsigned int j=0; j<state->egraph_vertices[i]->neighbors.size(); j++){
-        eg_->discToCont(state->egraph_vertices[i]->neighbors[j]->coord,c_coord);
+        eg_->discToCont(state->egraph_vertices[i]->neighbors[j],c_coord);
         downProject_->downProject(c_coord,dp);
         EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];
         int newCost = oldCost + state->egraph_vertices[i]->costs[j];

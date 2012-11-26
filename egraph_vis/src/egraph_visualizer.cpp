@@ -24,12 +24,12 @@ void EGraphVisualizer::visualize(){
     addState(v,false);
 
     vector<double> coord;
-    eg_->discToCont(v->coord,coord);
+    eg_->discToCont(v,coord);
     for(unsigned int j=0; j<v->neighbors.size(); j++){
       EGraph::EGraphVertex* u = v->neighbors[j];
       if(v->id<u->id){
         vector<double> coord2;
-        eg_->discToCont(u->coord,coord2);
+        eg_->discToCont(u,coord2);
         visualization_msgs::MarkerArray m = converter_->edgeToVisualizationMarker(coord,coord2);
 
         visualization_msgs::InteractiveMarker int_marker;
@@ -132,7 +132,7 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
 
 void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
   vector<double> coord;
-  eg_->discToCont(v->coord,coord);
+  eg_->discToCont(v,coord);
   visualization_msgs::MarkerArray m;
   if(detailed)
     m = converter_->stateToDetailedVisualizationMarker(coord);
@@ -167,7 +167,7 @@ void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
 
 void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
   vector<double> coord;
-  eg_->discToCont(v->coord,coord);
+  eg_->discToCont(v,coord);
   visualization_msgs::MarkerArray m = converter_->stateToDetailedVisualizationMarker(coord);
   visualization_msgs::InteractiveMarker int_marker;
   int_marker.header.frame_id = m.markers.front().header.frame_id;

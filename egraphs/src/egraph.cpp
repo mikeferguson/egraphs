@@ -1,18 +1,20 @@
 #include<egraphs/egraph.h>
 
-EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names){
+//TODO: This is an arbitrary size...
+#define ARBITRARY_HASH_TABLE_SIZE 32*1024
+
+EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names, int num_constants){
   min_ = min;
   max_ = max;
   res_ = resolution;
   names_ = names;
+  num_constants_ = num_constants;
 
-  //TODO: This is an arbitrary size...
-  hashtable.resize(32*1024);
+  hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
 }
 
 EGraph::EGraph(string filename){
-  //TODO: This is an arbitrary size...
-  hashtable.resize(32*1024);
+  hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
   load(filename);
 }
 
@@ -21,11 +23,13 @@ EGraph::~EGraph(){
 }
 
 void EGraph::clearEGraph(){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   min_.clear();
   max_.clear();
   res_.clear();
   names_.clear();
   hashtable.clear();
+  hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
 
   for(unsigned int i=0; i<id2vertex.size(); i++)
     delete id2vertex[i];
@@ -34,6 +38,7 @@ void EGraph::clearEGraph(){
 }
 
 bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   //error checking
   if(coords.size() < 2){
     ROS_WARN("[EGraph] Less than 2 points in the added path...doing nothing.");
@@ -54,14 +59,19 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   
   //convert continuous coordinates to discrete ones
   vector<vector<int> > disc_coords;
+  vector<vector<double> > constants;
   for(unsigned int i=0; i<coords.size(); i++){
-    if(res_.size() != coords[i].size()){
+    if(res_.size()+num_constants_ != coords[i].size()){
       ROS_ERROR("[EGraph] There is a coordinate in the path that doesn't have enough fields!");
       return false;
     }
     vector<int> dc;
     contToDisc(coords[i], dc);
     disc_coords.push_back(dc);
+    vector<double> temp;
+    for(unsigned int j=res_.size(); j<coords[i].size(); j++)
+      temp.push_back(coords[i][j]);
+    constants.push_back(temp);
   }
 
   //if a vertex is not in the graph add it
@@ -69,7 +79,7 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   for(unsigned int i=0; i<disc_coords.size(); i++){
     EGraphVertex* v = getVertex(disc_coords[i]);
     if(!v)
-      v = createVertex(disc_coords[i]);
+      v = createVertex(disc_coords[i],constants[i]);
     path_vertices.push_back(v);
   }
 
@@ -85,11 +95,15 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
 
 //print E-Graph
 void EGraph::print(){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   for(unsigned int i=0; i<id2vertex.size(); i++){
     EGraphVertex* v = id2vertex[i];
     printf("id:%d coord:(",v->id);
     for(unsigned int j=0; j<v->coord.size(); j++)
       printf("%d,",v->coord[j]);
+    printf(") constants:(");
+    for(unsigned int j=0; j<v->constants.size(); j++)
+      printf("%f,",v->constants[j]);
     printf(") neighbors:{");
     for(unsigned int j=0; j<v->neighbors.size(); j++)
       printf("(%d,%d),",v->neighbors[j]->id,v->costs[j]);
@@ -98,6 +112,7 @@ void EGraph::print(){
 }
 
 bool EGraph::save(string filename){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   FILE* fout = fopen(filename.c_str(),"w");
   if(!fout){
     ROS_ERROR("Could not open file \"%s\" to save E-Graph",filename.c_str());
@@ -106,7 +121,7 @@ bool EGraph::save(string filename){
 
   //save the dimension names, min, max, and resolution
   //for each dimension there is a line with format: "name min max resolution"
-  fprintf(fout,"%d\n",int(names_.size()));
+  fprintf(fout,"%d %d\n",int(names_.size()),num_constants_);
   for(unsigned int i=0; i<names_.size(); i++)
     fprintf(fout,"%s %f %f %f\n",names_[i].c_str(),min_[i],max_[i],res_[i]);
 
@@ -117,7 +132,7 @@ bool EGraph::save(string filename){
   for(unsigned int i=0; i<id2vertex.size(); i++){
     EGraphVertex* v = id2vertex[i];
     vector<double> coord;
-    discToCont(v->coord,coord);
+    discToCont(v,coord);
     for(unsigned int j=0; j<coord.size(); j++)
       fprintf(fout,"%f ",coord[j]);
     fprintf(fout,"%d ",int(v->neighbors.size()));
@@ -132,6 +147,7 @@ bool EGraph::save(string filename){
 }
 
 bool EGraph::load(string filename, bool clearCurrentEGraph){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   if(clearCurrentEGraph)
     clearEGraph();
   else{
@@ -152,6 +168,13 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     return false;
   }
 
+  //read the number of constants
+  if(fscanf(fin,"%d", &num_constants_) != 1){
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    return false;
+  }
+
+  printf("read dimension details\n");
   //read in all the dimension details
   char name[128];
   double min,max,res;
@@ -166,6 +189,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     res_.push_back(res);
   }
 
+  printf("read num vertices\n");
   //read in the number of vertices
   int num_vertices;
   if(fscanf(fin,"%d", &num_vertices) != 1){
@@ -178,10 +202,13 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     id2vertex.push_back(v);
   }
 
+  printf("read each vertex\n");
   //read in each vertex
   for(int i=0; i<num_vertices; i++){
+    printf("vertex %d\n",i);
     //read in the vertex coordinate
     EGraphVertex* v = id2vertex[i];
+    printf("1\n");
     double val;
     vector<double> coord;
     for(int j=0; j<num_dimensions; j++){
@@ -190,11 +217,22 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
         return false;
       }
       coord.push_back(val);
-      contToDisc(coord,v->coord);
     }
+    contToDisc(coord,v->coord);
+    for(int j=0; j<num_constants_; j++){
+      if(fscanf(fin,"%lf",&val) != 1){
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        return false;
+      }
+      v->constants.push_back(val);
+    }
+    printf("2\n");
     int idx = getHashBin(v->coord);
+    printf("3\n");
     hashtable[idx].push_back(v);
+    printf("4\n");
 
+    printf("  read num neighbors\n");
     //read in the number of neighbors
     int num_neighbors;
     if(fscanf(fin,"%d", &num_neighbors) != 1){
@@ -202,6 +240,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       return false;
     }
 
+    printf("  read in neighbors\n");
     //read in the neighbors
     int id;
     for(int j=0; j<num_neighbors; j++){
@@ -212,6 +251,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       v->neighbors.push_back(id2vertex[id]);
     }
 
+    printf("  read in costs\n");
     //read in the costs to the neighbors
     int cost;
     for(int j=0; j<num_neighbors; j++){
@@ -244,7 +284,7 @@ unsigned int EGraph::inthash(unsigned int key){
 
 int EGraph::getHashBin(vector<int>& coord){
   int hash = 0;
-  for(unsigned int i=0; i<coord.size(); i++){
+  for(unsigned int i=0; i<res_.size(); i++){
     hash += inthash(coord[i])<<i;
   }
   return inthash(hash) & (hashtable.size()-1);
@@ -266,9 +306,10 @@ EGraph::EGraphVertex* EGraph::getVertex(vector<int>& coord){
   return NULL;
 }
 
-EGraph::EGraphVertex* EGraph::createVertex(vector<int>& coord){
+EGraph::EGraphVertex* EGraph::createVertex(vector<int>& coord, vector<double>& constants){
   EGraphVertex* v = new EGraphVertex();
   v->coord = coord;
+  v->constants = constants;
   v->id = id2vertex.size();
   id2vertex.push_back(v);
   int idx = getHashBin(coord);
@@ -310,10 +351,12 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   }
 }
 
-void EGraph::discToCont(vector<int> d, vector<double>& c){
+void EGraph::discToCont(EGraphVertex* v, vector<double>& c){
   c.clear();
-  for(unsigned int i=0; i<d.size(); i++)
-    c.push_back(d[i]*res_[i]+min_[i]);
+  for(unsigned int i=0; i<v->coord.size(); i++)
+    c.push_back(v->coord[i]*res_[i]+min_[i]);
+  for(unsigned int i=0; i<v->constants.size(); i++)
+    c.push_back(v->constants[i]);
 }
 
 double round(double r) {
@@ -322,7 +365,7 @@ double round(double r) {
 
 void EGraph::contToDisc(vector<double> c, vector<int>& d){
   d.clear();
-  for(unsigned int i=0; i<c.size(); i++){
+  for(unsigned int i=0; i<res_.size(); i++){
     //printf("%f-%f=%f\n",c[i],min_[i],c[i]-min_[i]);
     //printf("%f-%f)/%f=%f\n",c[i],min_[i],res_[i],(c[i]-min_[i])/(res_[i]));
     //printf("int(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],int((c[i]-min_[i])/(res_[i])));

@@ -44,7 +44,7 @@ int main(int argc, char** argv){
   vector<double> min;
   vector<double> max;
   vector<double> res;
-  EGraph eg(min,max,res,names);
+  EGraph eg(min,max,res,names,0);
   EGraph2dGridHeuristic heur(&dp,100,100,1);
 
   AnytimeEGraphPlanner aegplanner(&env,true);

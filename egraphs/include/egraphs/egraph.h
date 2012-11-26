@@ -4,6 +4,7 @@
 #include<ros/ros.h>
 #include<vector>
 #include<string>
+#include<boost/thread.hpp>
 
 using namespace std;
 
@@ -19,6 +20,7 @@ class EGraph{
 
         int id;
         vector<int> coord;
+        vector<double> constants;
         //an adjacency list representing the graph (using the egraph ids)
         vector<EGraphVertex*> neighbors;
         vector<int> costs;
@@ -30,7 +32,7 @@ class EGraph{
 
     //constructor takes 4 vectors (min,max,res,names) which tells me the number of dimensions, how many values they can have, and the dimension names
     //load can be called after this in order bring up a stored E-Graph with different parameters than those stored in the file
-    EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names);
+    EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names, int num_constants);
 
     //another constructor takes an egraph file to load
     //this will load the E-Graph using the parameters (min,max,resolution,names) stored in the file
@@ -58,7 +60,7 @@ class EGraph{
     //collision check
     void collisionCheck();
 
-    void discToCont(vector<int> d, vector<double>& c);
+    void discToCont(EGraphVertex* v, vector<double>& c);
     void contToDisc(vector<double> c, vector<int>& d);
 
     //an id to coordinate mapping
@@ -69,7 +71,7 @@ class EGraph{
     unsigned int inthash(unsigned int key);
     int getHashBin(vector<int>& coord);
 
-    EGraphVertex* createVertex(vector<int>& coord);
+    EGraphVertex* createVertex(vector<int>& coord, vector<double>& constants);
     void addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost);
 
     //a coordinate to id mapping
@@ -80,6 +82,9 @@ class EGraph{
     vector<double> max_;
     vector<double> res_;
     vector<string> names_;
+    int num_constants_;
+
+    boost::recursive_mutex egraph_mutex_;
 };
 
 #endif
