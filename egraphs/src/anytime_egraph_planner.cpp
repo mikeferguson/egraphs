@@ -1421,6 +1421,9 @@ void AnytimeEGraphPlanner::updateEGraph(){
       v->shortcutIteration = 0;
     }
 
+    if(update_stats)
+      egraph_->recordStats(egraph_path_);
+
     if(feedback_path){
       //adds the new path to the e-graph and runs heuristic precomputations (like down projections of th e-graph)
       egraph_->addPath(egraph_path_,egraph_path_costs_);
@@ -1465,6 +1468,7 @@ int AnytimeEGraphPlanner::replan(vector<int>* solution_stateIDs_V, EGraphReplanP
   use_repair_time = params.repair_time > 0;
   repair_time = params.repair_time;
   feedback_path = params.feedback_path;
+  update_stats = params.update_stats;
   int ret = replan(params.max_time, solution_stateIDs_V, solcost);
   return ret;
 }

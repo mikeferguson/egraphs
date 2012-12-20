@@ -5,6 +5,7 @@
 #include<vector>
 #include<string>
 #include<boost/thread.hpp>
+#include<sbpl/headers.h>
 
 using namespace std;
 
@@ -24,10 +25,19 @@ class EGraph{
         //an adjacency list representing the graph (using the egraph ids)
         vector<EGraphVertex*> neighbors;
         vector<int> costs;
+        vector<int> use_frequency;
 
         vector<EGraphVertex*> shortcuts;
         vector<int> shortcut_costs;
         int shortcutIteration;
+    };
+
+    class EGraphVertexHeapElement: public AbstractSearchState{
+      public:
+        EGraphVertexHeapElement(){};
+        ~EGraphVertexHeapElement(){};
+          
+        int id;
     };
 
     //constructor takes 4 vectors (min,max,res,names) which tells me the number of dimensions, how many values they can have, and the dimension names
@@ -37,6 +47,8 @@ class EGraph{
     //another constructor takes an egraph file to load
     //this will load the E-Graph using the parameters (min,max,resolution,names) stored in the file
     EGraph(string filename);
+
+    EGraph(string filename, string stats_filename);
 
     ~EGraph();
 
@@ -56,6 +68,14 @@ class EGraph{
 
     //load egraph
     bool load(string filename, bool clearCurrentEGraph=true);
+
+    bool saveStats(string filename);
+    bool loadStats(string filename);
+
+    void recordStats(vector<vector<double> >& coords);
+    void resetStats();
+    void prune(int max_size, int method);
+    void setClusterRadius(double r){cluster_radius_ = r;};
 
     //collision check
     void collisionCheck();
@@ -83,6 +103,8 @@ class EGraph{
     vector<double> res_;
     vector<string> names_;
     int num_constants_;
+    int num_edges_;
+    double cluster_radius_;
 
     boost::recursive_mutex egraph_mutex_;
 };

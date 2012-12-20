@@ -9,6 +9,8 @@ EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolut
   res_ = resolution;
   names_ = names;
   num_constants_ = num_constants;
+  num_edges_ = 0;
+  cluster_radius_ = 1.0;
 
   hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
 }
@@ -16,6 +18,12 @@ EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolut
 EGraph::EGraph(string filename){
   hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
   load(filename);
+}
+
+EGraph::EGraph(string filename, string stats_filename){
+  hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
+  load(filename);
+  loadStats(stats_filename);
 }
 
 EGraph::~EGraph(){
@@ -35,6 +43,368 @@ void EGraph::clearEGraph(){
     delete id2vertex[i];
 
   id2vertex.clear();
+  num_edges_ = 0;
+}
+
+//recordStats
+//takes the vector of coords in the path
+//increments counts on egraph edges that were used
+void EGraph::recordStats(vector<vector<double> >& coords){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
+  if(coords.size() < 2){
+    ROS_WARN("[EGraph] Less than 2 points in the path so there are no edges. No stats to record.");
+    return;
+  }
+
+  //convert continuous coordinates to discrete ones
+  vector<vector<int> > disc_coords;
+  for(unsigned int i=0; i<coords.size(); i++){
+    if(res_.size()+num_constants_ != coords[i].size()){
+      ROS_ERROR("[EGraph] There is a coordinate in the path that doesn't have enough fields!");
+      return;
+    }
+    vector<int> dc;
+    contToDisc(coords[i], dc);
+    disc_coords.push_back(dc);
+  }
+
+  //for each edge that already exists in the egraph, increment the use count
+  vector<EGraphVertex*> path_vertices;
+  for(unsigned int i=1; i<disc_coords.size(); i++){
+    EGraphVertex* v1 = getVertex(disc_coords[i-1]);
+    EGraphVertex* v2 = getVertex(disc_coords[i]);
+    if(v1 && v2){
+      for(unsigned int i=0; i<v1->neighbors.size(); i++){
+        if(v1->neighbors[i]->id == v2->id){
+          v1->use_frequency[i]++;
+          break;
+        }
+      }
+      for(unsigned int i=0; i<v2->neighbors.size(); i++){
+        if(v2->neighbors[i]->id == v1->id){
+          v2->use_frequency[i]++;
+          break;
+        }
+      }
+    }
+  }
+}
+
+//resetStats
+//zeros the counts on egraph edge usage
+void EGraph::resetStats(){
+  for(unsigned int i=0; i<id2vertex.size(); i++){
+    EGraphVertex* v = id2vertex[i];
+    for(unsigned int j=0; j<v->use_frequency.size(); j++){
+      v->use_frequency[i] = 0;
+    }
+  }
+}
+
+//prune
+//takes the desired max number of edges, and a pruning method
+//method 0 - drop random edges
+//method 1 - drop least used edges
+//method 2 - drop least used edges that don't disconnect the graph
+//method 3 - drop edges that are not c-space diverse enough
+void EGraph::prune(int max_size, int method){
+  if(num_edges_ <= max_size){
+    ROS_INFO("EGraph is already within the max size. No pruning required.");
+    return;
+  }
+
+  ROS_INFO("Pruning EGraph of %d edges down to %d edges using method %d",num_edges_,max_size,method);
+
+  if(method==0){
+    ROS_INFO("Prune random edges...");
+
+    //build a list of all the edges
+    ROS_INFO("build list of edges...");
+    vector<pair<int,int> > edge_list;
+    for(unsigned int i=0; i<id2vertex.size(); i++){
+      EGraphVertex* v = id2vertex[i];
+      for(unsigned int j=0; j<v->neighbors.size(); j++){
+        if(v->id < v->neighbors[j]->id){
+          pair<int,int> p;
+          p.first = v->id;
+          p.second = v->neighbors[j]->id;
+          edge_list.push_back(p);
+        }
+      }
+    }
+    //randomly permute the list
+    ROS_INFO("randomly permute the list...");
+    for(unsigned int i=0; i<edge_list.size()-1; i++){
+      int idx = int(rand()%(edge_list.size()-1-i))+i;
+      //ROS_INFO("idx %d, size %d",idx,edge_list.size());
+      pair<int,int> temp = edge_list[i];
+      edge_list[i] = edge_list[idx];
+      edge_list[idx] = temp;
+    }
+    //remove the first k edges in the list
+    ROS_INFO("remove the first k edges...");
+    int k = num_edges_ - max_size;
+    for(int i=0; i<k; i++){
+      int id1 = edge_list[i].first;
+      int id2 = edge_list[i].second;
+
+      EGraphVertex* v1 = id2vertex[id1];
+      int idx = -1;
+      for(unsigned int j=0; j<v1->neighbors.size(); j++){
+        if(v1->neighbors[j]->id == id2){
+          idx = j;
+          break;
+        }
+      }
+      v1->neighbors.erase(v1->neighbors.begin()+idx);
+      v1->costs.erase(v1->costs.begin()+idx);
+      v1->use_frequency.erase(v1->use_frequency.begin()+idx);
+
+      EGraphVertex* v2 = id2vertex[id2];
+      if(v1->id!=v2->id){
+        idx = -1;
+        for(unsigned int j=0; j<v2->neighbors.size(); j++){
+          if(v2->neighbors[j]->id == id1){
+            idx = j;
+            break;
+          }
+        }
+        v2->neighbors.erase(v2->neighbors.begin()+idx);
+        v2->costs.erase(v2->costs.begin()+idx);
+        v2->use_frequency.erase(v2->use_frequency.begin()+idx);
+      }
+      num_edges_--;
+    }
+  }
+  else if(method==1){
+    ROS_INFO("Prune least used edges...");
+
+    //build a list of all the edges (with use frequency)
+    vector<pair<int,pair<int,int> > > edge_list;
+    for(unsigned int i=0; i<id2vertex.size(); i++){
+      EGraphVertex* v = id2vertex[i];
+      for(unsigned int j=0; j<v->use_frequency.size(); j++){
+        if(v->id < v->neighbors[j]->id){
+          pair<int,pair<int,int> > p;
+          p.first = v->use_frequency[j];
+          p.second.first = v->id;
+          p.second.second = v->neighbors[j]->id;
+          edge_list.push_back(p);
+        }
+      }
+    }
+    //sort edge list from lowest use to highest
+    sort(edge_list.begin(),edge_list.end());
+
+    int k = num_edges_ - max_size;
+    for(int i=0; i<k; i++){
+      int id1 = edge_list[i].second.first;
+      int id2 = edge_list[i].second.second;
+
+      EGraphVertex* v1 = id2vertex[id1];
+      int idx = -1;
+      for(unsigned int j=0; j<v1->neighbors.size(); j++){
+        if(v1->neighbors[j]->id == id2){
+          idx = j;
+          break;
+        }
+      }
+      v1->neighbors.erase(v1->neighbors.begin()+idx);
+      v1->costs.erase(v1->costs.begin()+idx);
+      v1->use_frequency.erase(v1->use_frequency.begin()+idx);
+
+      EGraphVertex* v2 = id2vertex[id2];
+      if(v1->id!=v2->id){
+        idx = -1;
+        for(unsigned int j=0; j<v2->neighbors.size(); j++){
+          if(v2->neighbors[j]->id == id1){
+            idx = j;
+            break;
+          }
+        }
+        v2->neighbors.erase(v2->neighbors.begin()+idx);
+        v2->costs.erase(v2->costs.begin()+idx);
+        v2->use_frequency.erase(v2->use_frequency.begin()+idx);
+      }
+      num_edges_--;
+    }
+  }
+  else if(method==2){
+    ROS_INFO("Prune least used edges that don't disconnect the graph...");
+    
+    //initialize the heap with vertices of degree 1
+    ROS_INFO("initialize heap with vertices of degree 1");
+    CHeap heap;
+    vector<EGraphVertexHeapElement*> element_list;
+    heap.makeemptyheap();
+    for(unsigned int i=0; i<id2vertex.size(); i++){
+      EGraphVertex* v = id2vertex[i];
+      if(v->neighbors.size()==1){
+        //add vertex id and  edge cost to the CHeap
+        EGraphVertexHeapElement* e = new EGraphVertexHeapElement();
+        e->id = v->id;
+        e->heapindex = 0;
+        element_list.push_back(e);
+        CKey key;
+        key.key[0] = v->use_frequency.front();
+        //ROS_INFO("insert %d with key %d",e->id,key.key[0]);
+        heap.insertheap(e,key);
+      }
+    }
+    //repeat until we are under the max number of edges
+    ROS_INFO("repeat until we are under the max edge count");
+    while(num_edges_ > max_size){
+      //ROS_ERROR("\n the size %d\n",id2vertex[4330]->use_frequency.size());
+      if(!heap.emptyheap()){
+        ROS_INFO("using heap");
+        EGraphVertexHeapElement* e = (EGraphVertexHeapElement*)heap.deleteminheap();
+        EGraphVertex* v1 = id2vertex[e->id];
+        if(v1->neighbors.size() != 1)
+          continue;
+        EGraphVertex* v2 = v1->neighbors.front();
+        v1->neighbors.clear();
+        v1->costs.clear();
+        v1->use_frequency.clear();
+
+        if(v2->id!=v1->id){
+          int idx = -1;
+          for(unsigned int i=0; i<v2->neighbors.size(); i++){
+            if(v2->neighbors[i]->id == v1->id){
+              idx = i;
+              break;
+            }
+          }
+          v2->neighbors.erase(v2->neighbors.begin()+idx);
+          v2->costs.erase(v2->costs.begin()+idx);
+          v2->use_frequency.erase(v2->use_frequency.begin()+idx);
+          if(v2->neighbors.size() == 1){
+            EGraphVertexHeapElement* e2 = new EGraphVertexHeapElement();
+            e2->id = v2->id;
+            e2->heapindex = 0;
+            element_list.push_back(e2);
+            CKey key;
+            key.key[0] = v2->use_frequency.front();
+            heap.insertheap(e2,key);
+          }
+        }
+        num_edges_--;
+      }
+      else{
+        ROS_INFO("remove global min edge (no leaves)");
+        int min_freq = INFINITECOST;
+        int id1 = -1;
+        int id2 = -1;
+        //ROS_INFO("0");
+        for(unsigned int i=0; i<id2vertex.size(); i++){
+          EGraphVertex* v = id2vertex[i];
+          //ROS_INFO("(%d=%d)->use_freq %d",i,v->id,v->use_frequency.size());
+          for(unsigned int j=0; j<v->use_frequency.size(); j++){
+            if(v->use_frequency[j] < min_freq){
+              //ROS_INFO("%d = %d (%d)",v->use_frequency.size(),v->neighbors.size(),j);
+              min_freq = v->use_frequency[j];
+              id1 = v->id;
+              id2 = v->neighbors[j]->id;
+            }
+          }
+        }
+        //ROS_INFO("1");
+        EGraphVertex* v1 = id2vertex[id1];
+        int idx = -1;
+        for(unsigned int j=0; j<v1->neighbors.size(); j++){
+          if(v1->neighbors[j]->id == id2){
+            idx = j;
+            break;
+          }
+        }
+        //ROS_INFO("2");
+        v1->neighbors.erase(v1->neighbors.begin()+idx);
+        v1->costs.erase(v1->costs.begin()+idx);
+        v1->use_frequency.erase(v1->use_frequency.begin()+idx);
+        if(v1->neighbors.size() == 1){
+          EGraphVertexHeapElement* e = new EGraphVertexHeapElement();
+          e->id = v1->id;
+          e->heapindex = 0;
+          element_list.push_back(e);
+          CKey key;
+          key.key[0] = v1->use_frequency.front();
+          heap.insertheap(e,key);
+        }
+        //ROS_INFO("3");
+
+        EGraphVertex* v2 = id2vertex[id2];
+        if(v1->id!=v2->id){
+          idx = -1;
+          for(unsigned int j=0; j<v2->neighbors.size(); j++){
+            if(v2->neighbors[j]->id == id1){
+              idx = j;
+              break;
+            }
+          }
+          //ROS_INFO("4");
+          v2->neighbors.erase(v2->neighbors.begin()+idx);
+          v2->costs.erase(v2->costs.begin()+idx);
+          v2->use_frequency.erase(v2->use_frequency.begin()+idx);
+          if(v2->neighbors.size() == 1){
+            EGraphVertexHeapElement* e = new EGraphVertexHeapElement();
+            e->id = v2->id;
+            e->heapindex = 0;
+            element_list.push_back(e);
+            CKey key;
+            key.key[0] = v2->use_frequency.front();
+            heap.insertheap(e,key);
+          }
+        }
+        num_edges_--;
+        //ROS_INFO("5");
+      }
+    }
+  }
+  else if(method==3){
+    ROS_INFO("Prune edges that are not c-space diverse...");
+    double dist = cluster_radius_;
+    vector<pair<int,int> > d;
+    for(unsigned int i=0; i<id2vertex.size(); i++){
+      int count = 0;
+      EGraphVertex* v1 = id2vertex[i];
+      for(unsigned int j=0; j<id2vertex.size(); j++){
+        double temp = 0;
+        EGraphVertex* v2 = id2vertex[j];
+        for(unsigned int k=0; k<v1->coord.size(); k++)
+          temp += (v1->coord[k] - v2->coord[k])*(v1->coord[k] - v2->coord[k]);
+        if(temp <= dist)
+          count++;
+      }
+      d.push_back(pair<int,int>(count,v1->id));
+    }
+    sort(d.begin(),d.end());
+
+    //remove edges incident to vertices with the highest counts
+    for(int i=d.size()-1; num_edges_>max_size; i--){
+      EGraphVertex* v = id2vertex[i];
+      for(unsigned int j=0; j<v->neighbors.size(); j++){
+        
+        EGraphVertex* v2 = v->neighbors[j];
+        if(v2->id!=v->id){
+          int idx = -1;
+          for(unsigned int k=0; k<v2->neighbors.size(); k++){
+            if(v2->neighbors[k]->id == v->id){
+              idx = k;
+              break;
+            }
+          }
+          v2->neighbors.erase(v2->neighbors.begin()+idx);
+          v2->costs.erase(v2->costs.begin()+idx);
+          v2->use_frequency.erase(v2->use_frequency.begin()+idx);
+        }
+        num_edges_--;
+      }
+      v->neighbors.clear();
+      v->costs.clear();
+      v->use_frequency.clear();
+    }
+  }
+  else
+    ROS_ERROR("Invalid pruning method provided...");
 }
 
 bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
@@ -111,11 +481,83 @@ void EGraph::print(){
   }
 }
 
+bool EGraph::saveStats(string filename){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
+  FILE* fout = fopen(filename.c_str(),"w");
+  if(!fout){
+    ROS_ERROR("Could not open file \"%s\" to save E-Graph stats",filename.c_str());
+    fclose(fout);
+    return false;
+  }
+
+  fprintf(fout,"%d\n",int(id2vertex.size()));
+  for(unsigned int i=0; i<id2vertex.size(); i++){
+    EGraphVertex* v = id2vertex[i];
+    fprintf(fout,"%d ",int(v->use_frequency.size()));
+    for(unsigned int j=0; j<v->use_frequency.size(); j++)
+      fprintf(fout,"%d ",v->use_frequency[j]);
+    fprintf(fout,"\n");
+  }
+  fclose(fout);
+  return true;
+}
+
+bool EGraph::loadStats(string filename){
+  boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
+  FILE* fin = fopen(filename.c_str(),"r");
+  if(!fin){
+    ROS_ERROR("Could not open file \"%s\" to load E-Graph stats",filename.c_str());
+    fclose(fin);
+    return false;
+  }
+
+  //read in the number of vertices
+  int num_vertices;
+  if(fscanf(fin,"%d", &num_vertices) != 1){
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    fclose(fin);
+    return false;
+  }
+  if(num_vertices!=int(id2vertex.size())){
+    ROS_ERROR("The EGraph stats file \"%s\" does not correspond to the currently loaded EGraph (different number of vertices)",filename.c_str());
+    fclose(fin);
+    return false;
+  }
+  for(int i=0; i<num_vertices; i++){
+    EGraphVertex* v = id2vertex[i];
+    int num_neighbors;
+    if(fscanf(fin,"%d", &num_neighbors) != 1){
+      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      fclose(fin);
+      return false;
+    }
+    if(num_neighbors!=int(v->neighbors.size())){
+      ROS_ERROR("The EGraph stats file \"%s\" does not correspond to the currently loaded EGraph (vertex %d has a different number of neighbors)",filename.c_str(),i);
+      fclose(fin);
+      return false;
+    }
+
+    //read in the neighbors
+    int freq;
+    for(int j=0; j<num_neighbors; j++){
+      if(fscanf(fin,"%d",&freq) != 1){
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        fclose(fin);
+        return false;
+      }
+      v->use_frequency[j] = freq;
+    }
+  }
+  fclose(fin);
+  return true;
+}
+
 bool EGraph::save(string filename){
   boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   FILE* fout = fopen(filename.c_str(),"w");
   if(!fout){
     ROS_ERROR("Could not open file \"%s\" to save E-Graph",filename.c_str());
+    fclose(fout);
     return false;
   }
 
@@ -143,6 +585,7 @@ bool EGraph::save(string filename){
     fprintf(fout,"\n");
   }
 
+  fclose(fout);
   return true;
 }
 
@@ -158,6 +601,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   FILE* fin = fopen(filename.c_str(),"r");
   if(!fin){
     ROS_ERROR("Could not open file \"%s\" to load E-Graph",filename.c_str());
+    fclose(fin);
     return false;
   }
 
@@ -165,12 +609,14 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   int num_dimensions;
   if(fscanf(fin,"%d", &num_dimensions) != 1){
     ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    fclose(fin);
     return false;
   }
 
   //read the number of constants
   if(fscanf(fin,"%d", &num_constants_) != 1){
     ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    fclose(fin);
     return false;
   }
 
@@ -181,6 +627,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   for(int i=0; i<num_dimensions; i++){
     if(fscanf(fin,"%s %lf %lf %lf",name,&min,&max,&res) != 4){
       ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      fclose(fin);
       return false;
     }
     names_.push_back(name);
@@ -194,6 +641,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   int num_vertices;
   if(fscanf(fin,"%d", &num_vertices) != 1){
     ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    fclose(fin);
     return false;
   }
   for(int i=0; i<num_vertices; i++){
@@ -214,6 +662,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     for(int j=0; j<num_dimensions; j++){
       if(fscanf(fin,"%lf",&val) != 1){
         ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        fclose(fin);
         return false;
       }
       coord.push_back(val);
@@ -222,6 +671,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     for(int j=0; j<num_constants_; j++){
       if(fscanf(fin,"%lf",&val) != 1){
         ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        fclose(fin);
         return false;
       }
       v->constants.push_back(val);
@@ -237,6 +687,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     int num_neighbors;
     if(fscanf(fin,"%d", &num_neighbors) != 1){
       ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      fclose(fin);
       return false;
     }
 
@@ -246,9 +697,13 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     for(int j=0; j<num_neighbors; j++){
       if(fscanf(fin,"%d",&id) != 1){
         ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        fclose(fin);
         return false;
       }
       v->neighbors.push_back(id2vertex[id]);
+      v->use_frequency.push_back(0);
+      if(v->id < id)
+        num_edges_++;
     }
 
     printf("  read in costs\n");
@@ -257,12 +712,14 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     for(int j=0; j<num_neighbors; j++){
       if(fscanf(fin,"%d",&cost) != 1){
         ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        fclose(fin);
         return false;
       }
       v->costs.push_back(cost);
     }
   }
 
+  fclose(fin);
   return true;
 }
 
@@ -332,6 +789,8 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   if(!done){
     v1->neighbors.push_back(v2);
     v1->costs.push_back(cost);
+    v1->use_frequency.push_back(0);
+    num_edges_++;
   }
 
   done = false;
@@ -348,6 +807,7 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   if(!done){
     v2->neighbors.push_back(v1);
     v2->costs.push_back(cost);
+    v2->use_frequency.push_back(0);
   }
 }
 

@@ -73,6 +73,7 @@ class EGraphReplanParams : public ReplanParams{
     double dec_epsE;
     bool feedback_path;
     bool use_egraph;
+    bool update_stats;
 };
 
 class EGraphPlannerStats : public PlannerStats{
@@ -265,6 +266,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     double repair_time;
     bool use_repair_time;
     bool feedback_path;
+    bool update_stats;
 
     vector<EGraphPlannerStats> stats;
 
