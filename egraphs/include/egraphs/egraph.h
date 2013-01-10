@@ -52,6 +52,8 @@ class EGraph{
 
     ~EGraph();
 
+    void addDimension(double min, double max, double res, string name, double initial_val);
+
     void clearEGraph();
 
     //add path takes a vector of names, and a vector of vectors of doubles (the waypoints on the path), a vector of costs

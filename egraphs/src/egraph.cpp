@@ -46,6 +46,15 @@ void EGraph::clearEGraph(){
   num_edges_ = 0;
 }
 
+void EGraph::addDimension(double min, double max, double res, string name, double initial_val){
+  min_.push_back(min);
+  max_.push_back(max);
+  res_.push_back(res);
+  names_.push_back(name);
+  for(unsigned int i=0; i<id2vertex.size(); i++)
+    id2vertex[i]->coord.push_back(round((initial_val-min)/res));
+}
+
 //recordStats
 //takes the vector of coords in the path
 //increments counts on egraph edges that were used
