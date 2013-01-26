@@ -710,6 +710,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
         return false;
       }
       v->neighbors.push_back(id2vertex[id]);
+      v->valid.push_back(true);
       v->use_frequency.push_back(0);
       if(v->id < id)
         num_edges_++;
@@ -732,8 +733,19 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   return true;
 }
 
-void EGraph::collisionCheck(){
-
+void EGraph::updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost){
+  for(unsigned int i=0; i<v1->neighbors.size(); i++){
+    if(v1->neighbors[i]==v2){
+      v1->valid[i] = valid;
+      v1->costs[i] = cost;
+    }
+  }
+  for(unsigned int i=0; i<v2->neighbors.size(); i++){
+    if(v2->neighbors[i]==v1){
+      v2->valid[i] = valid;
+      v2->costs[i] = cost;
+    }
+  }
 }
 
 unsigned int EGraph::inthash(unsigned int key){
@@ -789,6 +801,7 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
     if(v1->neighbors[i]==v2){
       if(cost < v1->costs[i]){
         v1->costs[i] = cost;
+        v1->valid[i] = true;
         ROS_WARN("[EGraph] This edge already exists, but the new one is cheaper. Overwriting...");
       }
       done = true;
@@ -798,6 +811,7 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   if(!done){
     v1->neighbors.push_back(v2);
     v1->costs.push_back(cost);
+    v1->valid.push_back(true);
     v1->use_frequency.push_back(0);
     num_edges_++;
   }
@@ -807,6 +821,7 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
     if(v2->neighbors[i]==v1){
       if(cost < v2->costs[i]){
         v2->costs[i] = cost;
+        v2->valid[i] = true;
         ROS_WARN("[EGraph] This edge already exists, but the new one is cheaper. Overwriting...");
       }
       done = true;
@@ -816,6 +831,7 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   if(!done){
     v2->neighbors.push_back(v1);
     v2->costs.push_back(cost);
+    v2->valid.push_back(true);
     v2->use_frequency.push_back(0);
   }
 }

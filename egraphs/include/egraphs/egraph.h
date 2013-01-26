@@ -25,6 +25,7 @@ class EGraph{
         //an adjacency list representing the graph (using the egraph ids)
         vector<EGraphVertex*> neighbors;
         vector<int> costs;
+        vector<bool> valid;
         vector<int> use_frequency;
 
         vector<EGraphVertex*> shortcuts;
@@ -79,8 +80,7 @@ class EGraph{
     void prune(int max_size, int method);
     void setClusterRadius(double r){cluster_radius_ = r;};
 
-    //collision check
-    void collisionCheck();
+    void updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost);
 
     void discToCont(EGraphVertex* v, vector<double>& c);
     void contToDisc(vector<double> c, vector<int>& d);

@@ -257,6 +257,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     */
     virtual void get_search_stats(vector<EGraphPlannerStats>* s);
 
+    void collisionCheck();
 
   protected:
 

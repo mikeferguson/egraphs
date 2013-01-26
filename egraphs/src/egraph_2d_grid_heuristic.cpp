@@ -170,6 +170,8 @@ int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
     vector<double> c_coord;
     for(unsigned int i=0; i<state->egraph_vertices.size(); i++){
       for(unsigned int j=0; j<state->egraph_vertices[i]->neighbors.size(); j++){
+        if(!state->egraph_vertices[i]->valid[j])
+          continue;
         eg_->discToCont(state->egraph_vertices[i]->neighbors[j],c_coord);
         downProject_->downProject(c_coord,dp);
         EGraph2dGridHeuristicCell* cell = &heur[HEUR_XY2ID(dp[0],dp[1])];
