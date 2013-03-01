@@ -278,6 +278,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     EGraphable* egraph_env_;
     EGraphHeuristic* egraph_heur_;
     bool useEGraph_;
+    vector<vector<EGraph::EGraphVertex*> > directShortcutCache_;
 
     bool planner_ok_;
     boost::thread* egraph_thread_;
@@ -324,9 +325,11 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     //used for forward search
     virtual void UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* pSearchStateSpace);
 
-    virtual void getShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
+    virtual void getDirectShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
+    virtual void getGradientShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
-    virtual void getShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
+    virtual void getDirectShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
+    virtual void getGradientShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
     virtual void updateEGraph();
 
     virtual int GetGVal(int StateID, AEGSearchStateSpace_t* pSearchStateSpace);
