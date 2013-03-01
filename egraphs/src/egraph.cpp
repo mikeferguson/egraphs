@@ -10,7 +10,9 @@ EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolut
   names_ = names;
   num_constants_ = num_constants;
   num_edges_ = 0;
+  num_components_ = 0;
   cluster_radius_ = 1.0;
+  search_iteration_ = 0;
 
   hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
 }
@@ -414,6 +416,8 @@ void EGraph::prune(int max_size, int method){
   }
   else
     ROS_ERROR("Invalid pruning method provided...");
+
+  computeComponents();
 }
 
 bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
@@ -468,8 +472,37 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
   }
 
+  computeComponents();
+
   ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
   return true;
+}
+
+void EGraph::computeComponents(){
+  //compute connected components
+  for(unsigned int i=0; i<id2vertex.size(); i++)
+    id2vertex[i]->component = -1;
+  num_components_ = 0;
+  vector<EGraphVertex*> q;
+  for(unsigned int i=0; i<id2vertex.size(); i++){
+    EGraphVertex* v = id2vertex[i];
+    if(v->component<0){
+      q.push_back(v);
+      v->component = num_components_;
+      while(!q.empty()){
+        v = q.back();
+        q.pop_back();
+        for(unsigned int j=0; j<v->neighbors.size(); j++){
+          EGraphVertex* u = v->neighbors[j];
+          if(u->component<0){
+            u->component = num_components_;
+            q.push_back(u);
+          }
+        }
+      }
+      num_components_++;
+    }
+  }
 }
 
 //print E-Graph
@@ -730,6 +763,9 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   }
 
   fclose(fin);
+
+  computeComponents();
+
   return true;
 }
 
@@ -800,9 +836,9 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   for(unsigned int i=0; i<v1->neighbors.size(); i++){
     if(v1->neighbors[i]==v2){
       if(cost < v1->costs[i]){
+        ROS_WARN("[EGraph] This edge already exists, but the new one is cheaper. Overwriting...%d->%d",v1->costs[i],cost);
         v1->costs[i] = cost;
         v1->valid[i] = true;
-        ROS_WARN("[EGraph] This edge already exists, but the new one is cheaper. Overwriting...");
       }
       done = true;
       break;
@@ -820,9 +856,9 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
   for(unsigned int i=0; i<v2->neighbors.size(); i++){
     if(v2->neighbors[i]==v1){
       if(cost < v2->costs[i]){
+        ROS_WARN("[EGraph] This edge already exists, but the new one is cheaper. Overwriting...%d->%d",v2->costs[i],cost);
         v2->costs[i] = cost;
         v2->valid[i] = true;
-        ROS_WARN("[EGraph] This edge already exists, but the new one is cheaper. Overwriting...");
       }
       done = true;
       break;
@@ -859,3 +895,100 @@ void EGraph::contToDisc(vector<double> c, vector<int>& d){
     //printf("huh.... %d\n",d.back());
   }
 }
+
+
+int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVertex*>* path, vector<int>* costs){
+  search_iteration_++;
+  CHeap heap;
+  CKey key;
+  heap.makeemptyheap();
+
+  key.key[0] = 0;
+  v1->search_iteration = search_iteration_;
+  v1->search_cost = 0;
+  v1->heapindex = 0;
+  heap.insertheap(v1,key);
+
+  while(!heap.emptyheap()){
+    EGraphVertex* v = (EGraphVertex*)heap.deleteminheap();
+    if(v==v2)
+      break;
+
+    for(unsigned int i=0; i<v->neighbors.size(); i++){
+      if(!v->valid[i])
+        continue;
+      EGraphVertex* u = v->neighbors[i];
+      if(u->search_iteration < search_iteration_){
+        //this vertex has not been discovered before
+        //initialize it
+        u->search_iteration = search_iteration_;
+        u->search_cost = INFINITECOST;
+        u->heapindex = 0;
+      }
+      int newCost = v->search_cost + v->costs[i];
+      if(u->search_cost > newCost){ //if we found a cheaper path to it
+        key.key[0] = newCost;
+        if(u->heapindex != 0)
+          heap.updateheap(u,key);
+        else
+          heap.insertheap(u,key);
+        u->search_cost = newCost;
+      }
+    }
+  }
+
+  if(v2->search_iteration < search_iteration_){
+    //v2 was not found...bad
+    ROS_ERROR("[EGraph] getShortestPath was called on two vertices that are not connected. There is probably a bug in the heuristic's getDirectShortcut function (or the connected components are incorrect).");
+    return INFINITECOST;
+  }
+
+  if(path && costs){
+    //reconstruct the search path
+    vector<EGraphVertex*> p;
+    vector<int > c;
+
+    EGraphVertex* v = v2;
+    p.push_back(v);
+    while(v!=v1){
+      int min_idx = -1;
+      int min_cost = INFINITECOST;
+      //ROS_INFO("descend from %d",v->id);
+      for(unsigned int i=0; i<v->neighbors.size(); i++){
+        if(v->neighbors[i]->search_iteration==search_iteration_ &&
+           v->neighbors[i]->search_cost + v->costs[i] < min_cost){
+          min_cost = v->neighbors[i]->search_cost + v->costs[i];
+          min_idx = i;
+        }
+      }
+      if(min_idx<0){
+        ROS_ERROR("[EGraph] getShortestPath found a local minima while reconstructing the path...");
+        return INFINITECOST;
+      }
+      c.push_back(v->costs[min_idx]);
+      p.push_back(v->neighbors[min_idx]);
+      v = v->neighbors[min_idx];
+    }
+    ROS_INFO("reverse reverse!");
+
+    //reverse the path
+    path->clear();
+    costs->clear();
+    path->reserve(p.size());
+    costs->reserve(c.size());
+    for(int i=p.size()-1; i>=0; i--)
+      path->push_back(p[i]);
+    int checksum = 0;
+    for(int i=c.size()-1; i>=0; i--){
+      costs->push_back(c[i]);
+      checksum += c[i];
+    }
+    if(checksum!=v2->search_cost){
+      ROS_ERROR("[EGraph] getShortestPath: the sum of the edges on the shortest path does not equal the g-value of the final state");
+      return INFINITECOST;
+    }
+  }
+
+  return v2->search_cost;
+}
+

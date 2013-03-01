@@ -12,11 +12,13 @@ using namespace std;
 class EGraph{
   public:
 
-    class EGraphVertex{
+    class EGraphVertex : public AbstractSearchState{
       public:
         EGraphVertex(){
           id = -1;
           shortcutIteration = 0;
+          component = -1;
+          search_iteration = 0;
         };
 
         int id;
@@ -27,10 +29,14 @@ class EGraph{
         vector<int> costs;
         vector<bool> valid;
         vector<int> use_frequency;
+        int component;
 
         vector<EGraphVertex*> shortcuts;
         vector<int> shortcut_costs;
         int shortcutIteration;
+
+        int search_iteration;
+        int search_cost;
     };
 
     class EGraphVertexHeapElement: public AbstractSearchState{
@@ -64,6 +70,9 @@ class EGraph{
     //finally this will call setEGraph on the EGraphable's EGraphHeuristic to prepare it for the next query
     bool addPath(vector<vector<double> >& coords, vector<int>& costs);
 
+    int getNumComponents(){return num_components_;};
+    void computeComponents();
+
     void print();
 
     //save egraph
@@ -85,9 +94,12 @@ class EGraph{
     void discToCont(EGraphVertex* v, vector<double>& c);
     void contToDisc(vector<double> c, vector<int>& d);
 
+    int getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVertex*>* path=NULL, vector<int>* costs=NULL);
+
     //an id to coordinate mapping
     vector<EGraphVertex*> id2vertex;
     EGraphVertex* getVertex(vector<int>& coord);
+    int search_iteration_;
   protected:
 
     unsigned int inthash(unsigned int key);
@@ -106,6 +118,7 @@ class EGraph{
     vector<string> names_;
     int num_constants_;
     int num_edges_;
+    int num_components_;
     double cluster_radius_;
 
     boost::recursive_mutex egraph_mutex_;
