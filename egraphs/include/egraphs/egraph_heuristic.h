@@ -36,6 +36,7 @@ class EGraphHeuristic{
 
     void initialize(EGraph* eg){
       eg_ = eg;
+      runPrecomputations();
     };
 
     void setEpsE(double e){

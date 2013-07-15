@@ -137,20 +137,6 @@ void EGraph2dGridHeuristic::setGoal(vector<double> goal){
   sc[id].cost = 0;
 
   inflated_cost_1_move_ = cost_1_move_ * epsE_;
-
-/*
-  ROS_ERROR("end setGoal");
-  FILE* fout = fopen("heur2d_first.csv","w");
-  for(unsigned int x=0; x<sizex_; x++){
-    for(unsigned int y=0; y<sizey_; y++){
-      int id = HEUR_XY2ID(x,y);
-      fprintf(fout,"%d ",heur[id].cost);
-    }
-    fprintf(fout,"\n");
-  }
-  fclose(fout);
-  ROS_ERROR("end setGoal i/o");
-*/
 }
 
 #define HEUR_SUCCESSOR(offset){                                                   \
@@ -209,27 +195,13 @@ int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
         }
       }
     }
-    /*
-    if(cell->closed){
-      ROS_ERROR("hey");
-      FILE* fout = fopen("heur2d.csv","w");
-      for(unsigned int x=0; x<sizex_; x++){
-        for(unsigned int y=0; y<sizey_; y++){
-          int id = HEUR_XY2ID(x,y);
-          fprintf(fout,"%d ",heur[id].cost);
-        }
-        fprintf(fout,"\n");
-      }
-      fclose(fout);
-    }
-    */
   }
   return cell->cost;
 }
 
-
+// IF IT IS NOT AN OBSTACLE, PUT IN THE HEAP
 #define SHORTCUT_SUCCESSOR(offset){               \
-  if(sc[id + (offset)].cost != -1){               \
+  if(sc[id + (offset)].cost != -1 && (sc[id + (offset)].cost > currentCost)){\
     if(sc[id + (offset)].heapindex != 0)          \
       sc_heap.updateheap(&sc[id + (offset)],key); \
     else                                          \
@@ -238,6 +210,8 @@ int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
   }                                               \
 }
 
+// 2d breadth first search from goal to all other states until desired component
+// 
 void EGraph2dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts){
   //we can assume that we would not be called if we have already discovered that component
   
@@ -251,14 +225,14 @@ void EGraph2dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
     int currentCost = oldCost + inflated_cost_1_move_;
     key.key[0] = currentCost;
 
-    HEUR_SUCCESSOR(-width_);                  //-y
-    HEUR_SUCCESSOR(1);                        //+x
-    HEUR_SUCCESSOR(width_);                   //+y
-    HEUR_SUCCESSOR(-1);                       //-x
-    HEUR_SUCCESSOR(-width_-1);                //-y-x
-    HEUR_SUCCESSOR(-width_+1);                //-y+x
-    HEUR_SUCCESSOR(width_+1);                 //+y+x
-    HEUR_SUCCESSOR(width_-1);                 //+y-x
+    SHORTCUT_SUCCESSOR(-width_);                  //-y
+    SHORTCUT_SUCCESSOR(1);                        //+x
+    SHORTCUT_SUCCESSOR(width_);                   //+y
+    SHORTCUT_SUCCESSOR(-1);                       //-x
+    SHORTCUT_SUCCESSOR(-width_-1);                //-y-x
+    SHORTCUT_SUCCESSOR(-width_+1);                //-y+x
+    SHORTCUT_SUCCESSOR(width_+2);                 //+y+x
+    SHORTCUT_SUCCESSOR(width_-1);                 //+y-x
 
     for(unsigned int i=0; i<state->egraph_vertices.size(); i++){
       if(state->egraph_vertices[i]->component==component){
