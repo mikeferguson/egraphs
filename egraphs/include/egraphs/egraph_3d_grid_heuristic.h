@@ -24,6 +24,7 @@ class EGraph3dGridHeuristic : public EGraphHeuristic{
     int getHeuristic(vector<double> coord);
     void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices);
     void runPrecomputations();
+    void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts);
 
   protected:
     class EGraph3dGridHeuristicCell: public AbstractSearchState{
@@ -48,9 +49,11 @@ class EGraph3dGridHeuristic : public EGraphHeuristic{
     int cost_1_move_;
     int inflated_cost_1_move_;
     CHeap heap;
+    CHeap sc_heap;
     vector<int> goal_dp_;
 
     vector<EGraph3dGridHeuristicCell> heur;
+    vector<EGraph3dGridHeuristicCell> sc;
     EGraphDownProject* downProject_;
 };
 
