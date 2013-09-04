@@ -307,7 +307,7 @@ void AnytimeEGraphPlanner::getDirectShortcutSuccessors(int stateID, vector<int>&
   if(!v)
     return;
 
-  ROS_INFO("get direct shortcut from %d",stateID);
+  //ROS_INFO("get direct shortcut from %d",stateID);
   vector<EGraph::EGraphVertex*> shortcuts;
   if(directShortcutCache_[v->component].empty()){
     double t0 = ros::Time::now().toSec();
@@ -327,62 +327,69 @@ void AnytimeEGraphPlanner::getDirectShortcutSuccessors(int stateID, vector<int>&
     CostV.push_back(egraph_->getShortestPath(v,directShortcutCache_[v->component][i]));
     double t1 = ros::Time::now().toSec();
     timing_stats.direct_shortcut_path_time += t1-t0;
-    ROS_INFO("direct shortcut %d->%d (%d)",stateID,id,CostV.back());
+    //ROS_INFO("direct shortcut %d->%d (%d)",stateID,id,CostV.back());
   }
 }
 
 void AnytimeEGraphPlanner::errorCheckEGraph(EGraph::EGraphVertex* egv){
-  //double check
-  printf("\nerror check start (given egraph vertex)\n");
-  printf("eg vertex address %x\n",egv);
-  int id_before = egv->id;
-  printf("eg vertex id: %d\n",egv->id);
+  vector<double> eg_coord;
+  egraph_->discToCont(egv,eg_coord);
+  int env_id = egraph_env_->getStateID(eg_coord);
+  vector<double> env_coord;
+  egraph_env_->getCoord(env_id,env_coord);
+  vector<int> env_dcoord;
+  egraph_->contToDisc(env_coord,env_dcoord);
+  EGraph::EGraphVertex* egv2 = egraph_->getVertex(env_dcoord);
 
-  printf("eg vertex disc coord (");
-  for(unsigned int i=0; i<egv->coord.size(); i++)
-    printf("%d ", egv->coord[i]);
-  printf(") --- constants (");
-  for(unsigned int i=0; i<egv->constants.size(); i++)
-    printf("%f ", egv->constants[i]);
-  printf(")\n");
-
-  vector<double> coord;
-  egraph_->discToCont(egv,coord);
-  printf("eg vertex cont coord (");
-  for(unsigned int i=0; i<coord.size(); i++)
-    printf("%f ", coord[i]);
-  printf(")\n");
-
-  int id = egraph_env_->getStateID(coord);
-  printf("env vertex id: %d\n",id);
-  egraph_env_->getCoord(id,coord);
-  printf("env vertex cont coord (");
-  for(unsigned int i=0; i<coord.size(); i++)
-    printf("%f ", coord[i]);
-  printf(")\n");
-
-  vector<int> d_coord;
-  egraph_->contToDisc(coord,d_coord);
-  printf("env vertex disc coord (");
-  for(unsigned int i=0; i<d_coord.size(); i++)
-    printf("%d ", d_coord[i]);
-  printf(")\n");
-
-  egv = egraph_->getVertex(d_coord);
-  printf("eg vertex address (again) %x\n",egv);
+  bool error = false;
   if(egv==NULL){
-    printf("The vertex is NULL!!!!!!! (waiting for keyboard input)\n");
-    char shit;
-    cin >> shit;
+    error = true;
+    ROS_ERROR("[AEG] ErrorCheckEGraph: The vertex is NULL!\n");
   }
-  else
-    printf("eg vertex id (again): %d\n",egv->id);
-  if(id_before != egv->id){
-    printf("we didn't get back the egraph vertex we started with! (waited for keyboard input)\n");
-    char shit;
-    cin >> shit;
+  if(egv2 != egv){
+    error = true;
+    ROS_ERROR("[AEG] ErrorCheckEGraph: We didn't get back the egraph vertex we started with (memory addresses don't match)!\n");
   }
-  printf("error check end\n");
+  if(egv2->id != egv->id){
+    error = true;
+    ROS_ERROR("[AEG] ErrorCheckEGraph: We didn't get back the egraph vertex we started with (egraph ids don't match)!\n");
+  }
+
+  if(error){
+    printf("eg vertex address %x\n",egv);
+    printf("eg vertex id: %d\n",egv->id);
+
+    printf("eg vertex disc coord (");
+    for(unsigned int i=0; i<egv->coord.size(); i++)
+      printf("%d ", egv->coord[i]);
+    printf(") --- constants (");
+    for(unsigned int i=0; i<egv->constants.size(); i++)
+      printf("%f ", egv->constants[i]);
+    printf(")\n");
+
+    printf("eg vertex cont coord (");
+    for(unsigned int i=0; i<eg_coord.size(); i++)
+      printf("%f ", eg_coord[i]);
+    printf(")\n");
+
+    printf("env vertex id: %d\n",env_id);
+    printf("env vertex cont coord (");
+    for(unsigned int i=0; i<env_coord.size(); i++)
+      printf("%f ", env_coord[i]);
+    printf(")\n");
+
+    printf("env vertex disc coord (");
+    for(unsigned int i=0; i<env_dcoord.size(); i++)
+      printf("%d ", env_dcoord[i]);
+    printf(")\n");
+
+    printf("eg vertex address (again) %x\n",egv2);
+    if(egv2!=NULL)
+      printf("eg vertex id (again): %d\n",egv2->id);
+    printf("press any key followed by enter to continue...\n");
+    char wait;
+    cin >> wait;
+  }
 }
 
 void AnytimeEGraphPlanner::getGradientShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV){
@@ -395,8 +402,8 @@ void AnytimeEGraphPlanner::getGradientShortcutSuccessors(int stateID, vector<int
     return;
 
   double t0 = ros::Time::now().toSec();
-  ROS_INFO("get shortcut from %d (egraph %d)",stateID,v->id);
-  ROS_INFO("get shortcut... %d (is %d < %d)",stateID,v->shortcutIteration,pSearchStateSpace_->searchiteration);
+  //ROS_INFO("get shortcut from %d (egraph %d)",stateID,v->id);
+  //ROS_INFO("get shortcut... %d (is %d < %d)",stateID,v->shortcutIteration,pSearchStateSpace_->searchiteration);
   if(v->shortcutIteration < pSearchStateSpace_->searchiteration){
     vector<EGraph::EGraphVertex*> path;
     vector<int> costs;
@@ -405,29 +412,29 @@ void AnytimeEGraphPlanner::getGradientShortcutSuccessors(int stateID, vector<int
       EGraph::EGraphVertex* s = path.back();
       egraph_->discToCont(s,coord);
       int s_cost = getHeuristic(coord);
-      ROS_INFO("%d (%d %d) %d",s->id,s->coord[0],s->coord[1],s_cost);
+      //ROS_INFO("%d (%d %d) %d",s->id,s->coord[0],s->coord[1],s_cost);
       EGraph::EGraphVertex* best_neighbor = NULL;
       int best_cost = s_cost;
       int trans_cost = 0;
       for(unsigned int i=0; i<s->neighbors.size(); i++){
         if(!s->valid[i])
           continue;
-        ROS_INFO("check da neighbors");
+        //ROS_INFO("check da neighbors");
         EGraph::EGraphVertex* temp = s->neighbors[i];
         egraph_->discToCont(temp,coord);
         int temp_cost = getHeuristic(coord);
-        ROS_INFO("%d (%d %d) %d",temp->id,temp->coord[0],temp->coord[1],temp_cost);
+        //ROS_INFO("%d (%d %d) %d",temp->id,temp->coord[0],temp->coord[1],temp_cost);
         if(temp_cost < best_cost){
           best_cost = temp_cost;
           best_neighbor = temp;
           trans_cost = s->costs[i];
-          ROS_INFO("trans cost %d",trans_cost);
+          //ROS_INFO("trans cost %d",trans_cost);
         }
       }
       //if we've reached a local minima then this state is its own shortcut
       //it's already in the path list from last iteration so it doesn't need to be added again
       if(best_cost == s_cost){
-        ROS_INFO("local minima found");
+        //ROS_INFO("local minima found");
         s->shortcuts.push_back(s);
         s->shortcutIteration = pSearchStateSpace_->searchiteration;
         s->shortcut_costs.push_back(0);
@@ -438,24 +445,24 @@ void AnytimeEGraphPlanner::getGradientShortcutSuccessors(int stateID, vector<int
       //if we've reach a state that already has its shortcut filled in for this iteration
       //then we can exit early
       if(best_neighbor->shortcutIteration == pSearchStateSpace_->searchiteration){
-        ROS_INFO("cached shortcut");
+        //ROS_INFO("cached shortcut");
         break;
       }
     }
     EGraph::EGraphVertex* theShortcut = path.back();
-    ROS_INFO("fill in path with %d (%d %d)",theShortcut->id,theShortcut->coord[0],theShortcut->coord[1]);
+    //ROS_INFO("fill in path with %d (%d %d)",theShortcut->id,theShortcut->coord[0],theShortcut->coord[1]);
     for(int i=path.size()-2; i>=0; i--){
-      ROS_INFO("huh %d %d",path[i]->id,path[i+1]->id);
+      //ROS_INFO("huh %d %d",path[i]->id,path[i+1]->id);
       path[i]->shortcuts.push_back(theShortcut);
       path[i]->shortcutIteration = pSearchStateSpace_->searchiteration;
-      ROS_INFO("hmm");
-      ROS_INFO("prev cost vec size %d",int(path[i+1]->shortcut_costs.size()));
-      ROS_INFO("prev cost %d",path[i+1]->shortcut_costs.back());
-      ROS_INFO("inc cost %d",costs[i]);
+      //ROS_INFO("hmm");
+      //ROS_INFO("prev cost vec size %d",int(path[i+1]->shortcut_costs.size()));
+      //ROS_INFO("prev cost %d",path[i+1]->shortcut_costs.back());
+      //ROS_INFO("inc cost %d",costs[i]);
       path[i]->shortcut_costs.push_back(path[i+1]->shortcut_costs.back()+costs[i]);
     }
   }
-  ROS_INFO("done computing shortcut");
+  //ROS_INFO("done computing shortcut");
 
   for(unsigned int i=0; i<v->shortcuts.size(); i++){
     egraph_->discToCont(v->shortcuts[i],coord);
@@ -464,7 +471,7 @@ void AnytimeEGraphPlanner::getGradientShortcutSuccessors(int stateID, vector<int
       continue;
     SuccIDV.push_back(id);
     CostV.push_back(v->shortcut_costs[i]);
-    ROS_INFO("%d %d",id,v->shortcut_costs[i]);
+    //ROS_INFO("%d %d",id,v->shortcut_costs[i]);
   }
 
   //ROS_INFO("ahhhh");
@@ -472,7 +479,7 @@ void AnytimeEGraphPlanner::getGradientShortcutSuccessors(int stateID, vector<int
     //ROS_INFO("%d %d",SuccIDV[i],CostV[i]);
   //}
 
-  ROS_INFO("done get shortcut");
+  //ROS_INFO("done get shortcut");
   double t1 = ros::Time::now().toSec();
   timing_stats.gradient_shortcut_time += t1-t0;
 }
@@ -1160,7 +1167,7 @@ int AnytimeEGraphPlanner::getHeurValue(AEGSearchStateSpace_t* pSearchStateSpace,
   return searchstateinfo->h;
 }
 
-void AnytimeEGraphPlanner::getDirectShortcutPath(int fromID, int toID, int cost, vector<int>& ids){
+void AnytimeEGraphPlanner::getDirectShortcutPath(int fromID, int toID, vector<int>& ids){
   vector<double> coord;
   vector<int> d_coord;
 
@@ -1175,7 +1182,7 @@ void AnytimeEGraphPlanner::getDirectShortcutPath(int fromID, int toID, int cost,
   vector<EGraph::EGraphVertex*> path;
   vector<int> costs;
   double t0 = ros::Time::now().toSec();
-  cost = egraph_->getShortestPath(v1,v2,&path,&costs);
+  egraph_->getShortestPath(v1,v2,&path,&costs);
   double t1 = ros::Time::now().toSec();
   timing_stats.direct_shortcut_path_time += t1-t0;
 
@@ -1351,7 +1358,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
         //we used a direct shortcut, fill in the sub-path
         vector<int> shortcut_path;
         //ROS_INFO("get the direct shortcut path %d %d %d",state->StateID,shortcut_id,actioncost);
-        getDirectShortcutPath(state->StateID,shortcut_id,actioncost,shortcut_path);
+        getDirectShortcutPath(state->StateID,shortcut_id,shortcut_path);
         for(unsigned int j=0; j<shortcut_path.size()-1; j++)
           wholePathIds.push_back(shortcut_path[j]);
         shortcutCount += shortcut_path.size();
@@ -1654,7 +1661,7 @@ void AnytimeEGraphPlanner::updateEGraph(){
         EGraph::EGraphVertex* v = egraph_->id2vertex[i];
         vector<double> coord;
         egraph_->discToCont(v,coord);
-        ROS_INFO("egraph2env ids: %d",egraph_env_->getStateID(coord));
+        //ROS_INFO("egraph2env ids: %d",egraph_env_->getStateID(coord));
         errorCheckEGraph(v);
       }
       double t3 = ros::Time::now().toSec();

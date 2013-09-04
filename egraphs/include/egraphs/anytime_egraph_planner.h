@@ -358,7 +358,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     virtual void getDirectShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getGradientShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
-    virtual void getDirectShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
+    virtual void getDirectShortcutPath(int fromID, int toID, vector<int>& ids);
     virtual void getGradientShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
     virtual void updateEGraph();
 

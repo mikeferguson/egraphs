@@ -696,10 +696,10 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   printf("read each vertex\n");
   //read in each vertex
   for(int i=0; i<num_vertices; i++){
-    printf("vertex %d\n",i);
+    //printf("vertex %d\n",i);
     //read in the vertex coordinate
     EGraphVertex* v = id2vertex[i];
-    printf("1\n");
+    //printf("1\n");
     double val;
     vector<double> coord;
     for(int j=0; j<num_dimensions; j++){
@@ -719,13 +719,13 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       }
       v->constants.push_back(val);
     }
-    printf("2\n");
+    //printf("2\n");
     int idx = getHashBin(v->coord);
-    printf("3\n");
+    //printf("3\n");
     hashtable[idx].push_back(v);
-    printf("4\n");
+    //printf("4\n");
 
-    printf("  read num neighbors\n");
+    //printf("  read num neighbors\n");
     //read in the number of neighbors
     int num_neighbors;
     if(fscanf(fin,"%d", &num_neighbors) != 1){
@@ -734,7 +734,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       return false;
     }
 
-    printf("  read in neighbors\n");
+    //printf("  read in neighbors\n");
     //read in the neighbors
     int id;
     for(int j=0; j<num_neighbors; j++){
@@ -750,7 +750,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
         num_edges_++;
     }
 
-    printf("  read in costs\n");
+    //printf("  read in costs\n");
     //read in the costs to the neighbors
     int cost;
     for(int j=0; j<num_neighbors; j++){
@@ -762,6 +762,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       v->costs.push_back(cost);
     }
   }
+  printf("done reading egraph from file\n");
 
   fclose(fin);
 
