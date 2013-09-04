@@ -14,7 +14,7 @@ EGraph3dGridHeuristic::EGraph3dGridHeuristic(EGraphDownProject* downProject, int
   length_ = sizez_ + 2;
   planeSize_ = width_ * height_;
   gridSize_ = planeSize_ * length_;
-  printf("sizes: x=%d y=%d z=%d plane=%d grid=%d\n",sizex_,sizey_,sizez_,planeSize_,gridSize_);
+  ROS_INFO("sizes: x=%d y=%d z=%d plane=%d grid=%d\n",sizex_,sizey_,sizez_,planeSize_,gridSize_);
 
   heur.resize(gridSize_);
   sc.resize(gridSize_);
@@ -153,9 +153,8 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
   if(dp[0] > sizex_ ||
      dp[1] > sizey_ ||
      dp[2] > sizez_){
-    printf("%d %d %d -> %d\n",dp[0],dp[1],dp[2],HEUR_XYZ2ID(dp[0],dp[1],dp[2]));
-    char shit;
-    cin >> shit;
+    ROS_ERROR("out of bounds heuristic request: %d %d %d -> %d\n",dp[0],dp[1],dp[2],HEUR_XYZ2ID(dp[0],dp[1],dp[2]));
+    exit(1);
     return INFINITECOST;
   }
 

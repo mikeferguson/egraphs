@@ -468,7 +468,7 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
 
   //add each edge
   for(unsigned int i=1; i<path_vertices.size(); i++){
-    ROS_INFO("adding %d->%d at a cost of %d",path_vertices[i-1]->id,path_vertices[i]->id,costs[i-1]);
+    //ROS_INFO("adding %d->%d at a cost of %d",path_vertices[i-1]->id,path_vertices[i]->id,costs[i-1]);
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
   }
 
@@ -971,7 +971,7 @@ int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVer
       p.push_back(v->neighbors[min_idx]);
       v = v->neighbors[min_idx];
     }
-    ROS_INFO("reverse reverse!");
+    //ROS_INFO("reverse reverse!");
 
     //reverse the path
     path->clear();

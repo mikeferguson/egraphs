@@ -295,7 +295,7 @@ void AnytimeEGraphPlanner::DeleteSearchStateData(AEGState* state)
 void AnytimeEGraphPlanner::UpdatePreds(AEGState* state, AEGSearchStateSpace_t* pSearchStateSpace)
 {
   printf("Badness....... we can't do backward search yet!\n");
-  exit(0);
+  exit(1);
 }
 
 void AnytimeEGraphPlanner::getDirectShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV){
@@ -356,7 +356,7 @@ void AnytimeEGraphPlanner::errorCheckEGraph(EGraph::EGraphVertex* egv){
   }
 
   if(error){
-    printf("eg vertex address %x\n",egv);
+    printf("eg vertex address %p\n",egv);
     printf("eg vertex id: %d\n",egv->id);
 
     printf("eg vertex disc coord (");
@@ -383,7 +383,7 @@ void AnytimeEGraphPlanner::errorCheckEGraph(EGraph::EGraphVertex* egv){
       printf("%d ", env_dcoord[i]);
     printf(")\n");
 
-    printf("eg vertex address (again) %x\n",egv2);
+    printf("eg vertex address (again) %p\n",egv2);
     if(egv2!=NULL)
       printf("eg vertex id (again): %d\n",egv2->id);
     printf("press any key followed by enter to continue...\n");
@@ -535,20 +535,18 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
       vector<double> teh_coord;
       if(!egraph_env_->getCoord(SuccIDV[i], teh_coord)){
         ROS_ERROR("Get coord failed on a freshly generated state! (%d)",SuccIDV[i]);
-        char shit;
-        cin >> shit;
+        exit(1);
       }
       int temp_id = egraph_env_->getStateID(teh_coord);
       if(temp_id != SuccIDV[i]){
         ROS_ERROR("We didn't get a matching id! (%d != %d)",SuccIDV[i],temp_id);
-        char shit;
-        cin >> shit;
+        exit(1);
       }
     }
 
     if(CostV[i]<=0){
       ROS_ERROR("regular successor with cost %d",CostV[i]);
-      exit(0);
+      exit(1);
     }
   }
 
@@ -559,7 +557,7 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
     for(unsigned int i=0; i<CostV.size(); i++){
       if(CostV[i]<=0){
         ROS_ERROR("direct shortcut with cost %d (%d->%d)",CostV[i],state->MDPstate->StateID,SuccIDV[i]);
-        exit(0);
+        exit(1);
       }
     }
 
@@ -567,7 +565,7 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
     for(unsigned int i=0; i<CostV.size(); i++){
       if(CostV[i]<=0){
         ROS_ERROR("gradient shortcut with cost %d (%d->%d)",CostV[i],state->MDPstate->StateID,SuccIDV[i]);
-        exit(0);
+        exit(1);
       }
     }
 
@@ -576,7 +574,7 @@ void AnytimeEGraphPlanner::UpdateSuccs(AEGState* state, AEGSearchStateSpace_t* p
     for(unsigned int i=0; i<CostV.size(); i++){
       if(CostV[i]<=0){
         ROS_ERROR("snap with cost %d",CostV[i]);
-        exit(0);
+        exit(1);
       }
     }
 
@@ -1341,7 +1339,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
       CostV.clear();
       getDirectShortcutSuccessors(state->StateID,SuccIDV,CostV);
       unsigned int i;
-      ROS_INFO("direct shortcut maybe? from %d",state->StateID);
+      //ROS_INFO("direct shortcut maybe? from %d",state->StateID);
       for(i=0; i<SuccIDV.size(); i++){
         //ROS_INFO("checking %d %d",searchstateinfo->bestnextstate->StateID,CostV[i]);
         if(SuccIDV[i] == searchstateinfo->bestnextstate->StateID && CostV[i]<actioncost){
@@ -1369,7 +1367,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
         ///////////////////////////////////
         getGradientShortcutSuccessors(state->StateID,SuccIDV,CostV);
         unsigned int i;
-        ROS_INFO("gradient shortcut maybe? from %d",state->StateID);
+        //ROS_INFO("gradient shortcut maybe? from %d",state->StateID);
         for(i=0; i<SuccIDV.size(); i++){
           //ROS_INFO("checking %d %d",searchstateinfo->bestnextstate->StateID,CostV[i]);
           if(SuccIDV[i] == searchstateinfo->bestnextstate->StateID && CostV[i]<actioncost){
@@ -1393,7 +1391,7 @@ vector<int> AnytimeEGraphPlanner::GetSearchPath(AEGSearchStateSpace_t* pSearchSt
           ///////////////////////////////////
           // Begin snap check
           ///////////////////////////////////
-          ROS_INFO("nope...it's a snap");
+          //ROS_INFO("nope...it's a snap");
           SuccIDV.clear();
           CostV.clear();
           getSnapSuccessors(state->StateID,SuccIDV,CostV);
