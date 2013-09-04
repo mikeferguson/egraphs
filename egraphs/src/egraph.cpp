@@ -503,6 +503,7 @@ void EGraph::computeComponents(){
       num_components_++;
     }
   }
+  ROS_INFO("[EGraph] there are %d components",num_components_);
 }
 
 //print E-Graph
@@ -889,7 +890,7 @@ void EGraph::contToDisc(vector<double> c, vector<int>& d){
   for(unsigned int i=0; i<res_.size(); i++){
     //printf("%f-%f=%f\n",c[i],min_[i],c[i]-min_[i]);
     //printf("%f-%f)/%f=%f\n",c[i],min_[i],res_[i],(c[i]-min_[i])/(res_[i]));
-    //printf("int(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],int((c[i]-min_[i])/(res_[i])));
+    //printf("round(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],round((c[i]-min_[i])/(res_[i])));
     //d.push_back(int((c[i]-min_[i])/(res_[i])));
     d.push_back(round((c[i]-min_[i])/(res_[i])));
     //printf("huh.... %d\n",d.back());
