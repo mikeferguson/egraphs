@@ -468,7 +468,7 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
 
   //add each edge
   for(unsigned int i=1; i<path_vertices.size(); i++){
-    ROS_INFO("adding %d->%d at a cost of %d",path_vertices[i-1]->id,path_vertices[i]->id,costs[i-1]);
+    //ROS_INFO("adding %d->%d at a cost of %d",path_vertices[i-1]->id,path_vertices[i]->id,costs[i-1]);
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
   }
 
@@ -503,6 +503,7 @@ void EGraph::computeComponents(){
       num_components_++;
     }
   }
+  ROS_INFO("[EGraph] there are %d components",num_components_);
 }
 
 //print E-Graph
@@ -695,10 +696,10 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   printf("read each vertex\n");
   //read in each vertex
   for(int i=0; i<num_vertices; i++){
-    printf("vertex %d\n",i);
+    //printf("vertex %d\n",i);
     //read in the vertex coordinate
     EGraphVertex* v = id2vertex[i];
-    printf("1\n");
+    //printf("1\n");
     double val;
     vector<double> coord;
     for(int j=0; j<num_dimensions; j++){
@@ -718,13 +719,13 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       }
       v->constants.push_back(val);
     }
-    printf("2\n");
+    //printf("2\n");
     int idx = getHashBin(v->coord);
-    printf("3\n");
+    //printf("3\n");
     hashtable[idx].push_back(v);
-    printf("4\n");
+    //printf("4\n");
 
-    printf("  read num neighbors\n");
+    //printf("  read num neighbors\n");
     //read in the number of neighbors
     int num_neighbors;
     if(fscanf(fin,"%d", &num_neighbors) != 1){
@@ -733,7 +734,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       return false;
     }
 
-    printf("  read in neighbors\n");
+    //printf("  read in neighbors\n");
     //read in the neighbors
     int id;
     for(int j=0; j<num_neighbors; j++){
@@ -749,7 +750,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
         num_edges_++;
     }
 
-    printf("  read in costs\n");
+    //printf("  read in costs\n");
     //read in the costs to the neighbors
     int cost;
     for(int j=0; j<num_neighbors; j++){
@@ -761,6 +762,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       v->costs.push_back(cost);
     }
   }
+  printf("done reading egraph from file\n");
 
   fclose(fin);
 
@@ -889,7 +891,7 @@ void EGraph::contToDisc(vector<double> c, vector<int>& d){
   for(unsigned int i=0; i<res_.size(); i++){
     //printf("%f-%f=%f\n",c[i],min_[i],c[i]-min_[i]);
     //printf("%f-%f)/%f=%f\n",c[i],min_[i],res_[i],(c[i]-min_[i])/(res_[i]));
-    //printf("int(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],int((c[i]-min_[i])/(res_[i])));
+    //printf("round(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],round((c[i]-min_[i])/(res_[i])));
     //d.push_back(int((c[i]-min_[i])/(res_[i])));
     d.push_back(round((c[i]-min_[i])/(res_[i])));
     //printf("huh.... %d\n",d.back());
@@ -969,7 +971,7 @@ int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVer
       p.push_back(v->neighbors[min_idx]);
       v = v->neighbors[min_idx];
     }
-    ROS_INFO("reverse reverse!");
+    //ROS_INFO("reverse reverse!");
 
     //reverse the path
     path->clear();

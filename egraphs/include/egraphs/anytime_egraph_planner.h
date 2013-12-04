@@ -82,6 +82,29 @@ class EGraphPlannerStats : public PlannerStats{
     double epsE;
 };
 
+class EGraphTimingStats{
+  public:
+    EGraphTimingStats(){
+      initial_heuristic_time = 0;
+      heuristic_time = 0;
+      direct_shortcut_time = 0;
+      direct_shortcut_path_time = 0;
+      gradient_shortcut_time = 0;
+      gradient_shortcut_path_time = 0;
+      errorCheckEGraphTime = 0;
+      updateEGraphTime = 0;
+    }
+
+    double initial_heuristic_time;
+    double heuristic_time;
+    double direct_shortcut_time;
+    double direct_shortcut_path_time;
+    double gradient_shortcut_time;
+    double gradient_shortcut_path_time;
+    double errorCheckEGraphTime;
+    double updateEGraphTime;
+};
+
 //-------------------------------------------------------------
 
 
@@ -257,6 +280,9 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     */
     virtual void get_search_stats(vector<EGraphPlannerStats>* s);
 
+    virtual EGraphTimingStats get_timing_stats(){return timing_stats;};
+
+
     void collisionCheck();
 
   protected:
@@ -270,6 +296,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     bool update_stats;
 
     vector<EGraphPlannerStats> stats;
+    EGraphTimingStats timing_stats;
 
     int num_of_expands_initial_solution;
 
@@ -302,12 +329,15 @@ class AnytimeEGraphPlanner : public SBPLPlanner
 
 
     //member functions
+    void errorCheckEGraph(EGraph::EGraphVertex* egv);
+
     virtual void Initialize_searchinfo(CMDPSTATE* state, AEGSearchStateSpace_t* pSearchStateSpace);
 
     virtual CMDPSTATE* CreateState(int stateID, AEGSearchStateSpace_t* pSearchStateSpace);
 
     virtual CMDPSTATE* GetState(int stateID, AEGSearchStateSpace_t* pSearchStateSpace);
 
+    inline int getHeuristic(vector<double>& coord);
     virtual int ComputeHeuristic(CMDPSTATE* MDPstate, AEGSearchStateSpace_t* pSearchStateSpace);
 
     //initialization of a state
@@ -328,7 +358,7 @@ class AnytimeEGraphPlanner : public SBPLPlanner
     virtual void getDirectShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getGradientShortcutSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
     virtual void getSnapSuccessors(int stateID, vector<int>& SuccIDV, vector<int>& CostV);
-    virtual void getDirectShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
+    virtual void getDirectShortcutPath(int fromID, int toID, vector<int>& ids);
     virtual void getGradientShortcutPath(int fromID, int toID, int cost, vector<int>& ids);
     virtual void updateEGraph();
 

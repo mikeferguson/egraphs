@@ -14,15 +14,20 @@ EGraph3dGridHeuristic::EGraph3dGridHeuristic(EGraphDownProject* downProject, int
   length_ = sizez_ + 2;
   planeSize_ = width_ * height_;
   gridSize_ = planeSize_ * length_;
-  printf("sizes: x=%d y=%d z=%d plane=%d grid=%d\n",sizex_,sizey_,sizez_,planeSize_,gridSize_);
+  ROS_INFO("sizes: x=%d y=%d z=%d plane=%d grid=%d\n",sizex_,sizey_,sizez_,planeSize_,gridSize_);
 
   heur.resize(gridSize_);
+  sc.resize(gridSize_);
   for (int i = 0; i < gridSize_; i++) {
     int x = i % width_, y = i / width_ % height_, z = i / planeSize_;
-    if (x == 0 || x == width_ - 1 || y == 0 || y == height_ - 1 || z == 0 || z == length_ - 1)
+    if (x == 0 || x == width_ - 1 || y == 0 || y == height_ - 1 || z == 0 || z == length_ - 1){
       heur[i].cost = -1;
-    else
+      sc[i].cost = -1;
+    }
+    else{
       heur[i].cost = INFINITECOST;
+      sc[i].cost = INFINITECOST;
+    }
   }
 
 }
@@ -38,11 +43,15 @@ void EGraph3dGridHeuristic::setGrid(vector<vector<vector<bool> > >& grid){
   for(unsigned int x=0; x<grid.size(); x++){
     for(unsigned int y=0; y<grid[x].size(); y++){
       for(unsigned int z=0; z<grid[x][y].size(); z++){
-      int id = HEUR_XYZ2ID(x,y,z);
-      if(grid[x][y][z])
-        heur[id].cost = -1;
-      else
-        heur[id].cost = INFINITECOST;
+        int id = HEUR_XYZ2ID(x,y,z);
+        if(grid[x][y][z]){
+          heur[id].cost = -1;
+          sc[id].cost = -1;
+        }
+        else{
+          heur[id].cost = INFINITECOST;
+          sc[id].cost = INFINITECOST;
+        }
       }
     }
   }
@@ -60,8 +69,10 @@ void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> co
 void EGraph3dGridHeuristic::runPrecomputations(){
   //ROS_INFO("begin precomputations");
   //refill the cell to egraph vertex mapping
-  for(int i=0; i<gridSize_; i++)
+  for(int i=0; i<gridSize_; i++){
     heur[i].egraph_vertices.clear();
+    sc[i].egraph_vertices.clear();
+  }
 
   vector<int> dp;
   vector<double> c_coord;
@@ -73,6 +84,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
     //ROS_INFO("size of coord %d",dp.size());
     //ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
     heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
+    sc[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
     //ROS_INFO("push_back");
   }
   //ROS_INFO("done precomputations");
@@ -87,6 +99,11 @@ void EGraph3dGridHeuristic::setGoal(vector<double> goal){
     heur[i].closed = false;
     if(heur[i].cost!=-1)
       heur[i].cost = INFINITECOST;
+    sc[i].id = i;
+    sc[i].heapindex = 0;
+    sc[i].closed = false;
+    if(sc[i].cost!=-1)
+      sc[i].cost = INFINITECOST;
   }
   
   vector<int> dp;
@@ -109,8 +126,13 @@ void EGraph3dGridHeuristic::setGoal(vector<double> goal){
   int id = HEUR_XYZ2ID(dp[0],dp[1],dp[2]);
   heap.insertheap(&heur[id],key);
   heur[id].cost = 0;
-  inflated_cost_1_move_ = cost_1_move_ * epsE_;
 
+  sc_heap.makeemptyheap();
+  id = HEUR_XYZ2ID(dp[0],dp[1],dp[2]);
+  sc_heap.insertheap(&sc[id],key);
+  sc[id].cost = 0;
+
+  inflated_cost_1_move_ = cost_1_move_ * epsE_;
 }
 
 #define HEUR_SUCCESSOR(offset){                                                   \
@@ -127,6 +149,14 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];
+
+  if(dp[0] > sizex_ ||
+     dp[1] > sizey_ ||
+     dp[2] > sizez_){
+    ROS_ERROR("out of bounds heuristic request: %d %d %d -> %d\n",dp[0],dp[1],dp[2],HEUR_XYZ2ID(dp[0],dp[1],dp[2]));
+    exit(1);
+    return INFINITECOST;
+  }
 
   if(cell->cost==-1)
     return INFINITECOST;
@@ -205,4 +235,67 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
   }
   return cell->cost;
 }
+
+// IF IT IS NOT AN OBSTACLE, PUT IN THE HEAP
+#define SHORTCUT_SUCCESSOR(offset){               \
+  if(sc[id + (offset)].cost != -1 && (sc[id + (offset)].cost > currentCost)){\
+    if(sc[id + (offset)].heapindex != 0)          \
+      sc_heap.updateheap(&sc[id + (offset)],key); \
+    else                                          \
+      sc_heap.insertheap(&sc[id + (offset)],key); \
+    sc[id + (offset)].cost = currentCost;         \
+  }                                               \
+}
+
+// 2d breadth first search from goal to all other states until desired component
+//
+void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGraphVertex*>&     shortcuts){
+  //we can assume that we would not be called if we have already discovered that component
+
+  CKey key;
+  //compute distance from H to all cells and note for each cell, what node in H was the closest
+  while(!sc_heap.emptyheap() && shortcuts.empty()){
+    EGraph3dGridHeuristicCell* state = (EGraph3dGridHeuristicCell*)sc_heap.deleteminheap();
+    int id = state->id;
+    state->closed = true;
+    int oldCost = state->cost;
+    int currentCost = oldCost + inflated_cost_1_move_;
+    key.key[0] = currentCost;
+
+    SHORTCUT_SUCCESSOR(-width_);              //-y
+    SHORTCUT_SUCCESSOR(1);                    //+x
+    SHORTCUT_SUCCESSOR(width_);               //+y
+    SHORTCUT_SUCCESSOR(-1);                   //-x
+    SHORTCUT_SUCCESSOR(-width_-1);            //-y-x
+    SHORTCUT_SUCCESSOR(-width_+1);            //-y+x
+    SHORTCUT_SUCCESSOR(width_+1);             //+y+x
+    SHORTCUT_SUCCESSOR(width_-1);             //+y-x
+    SHORTCUT_SUCCESSOR(planeSize_);           //+z
+    SHORTCUT_SUCCESSOR(-width_+planeSize_);   //+z-y
+    SHORTCUT_SUCCESSOR(1+planeSize_);         //+z+x
+    SHORTCUT_SUCCESSOR(width_+planeSize_);    //+z+y
+    SHORTCUT_SUCCESSOR(-1+planeSize_);        //+z-x
+    SHORTCUT_SUCCESSOR(-width_-1+planeSize_); //+z-y-x
+    SHORTCUT_SUCCESSOR(-width_+1+planeSize_); //+z-y+x
+    SHORTCUT_SUCCESSOR(width_+1+planeSize_);  //+z+y+x
+    SHORTCUT_SUCCESSOR(width_-1+planeSize_);  //+z+y-x
+    SHORTCUT_SUCCESSOR(-planeSize_);          //-z
+    SHORTCUT_SUCCESSOR(-width_-planeSize_);   //-z-y
+    SHORTCUT_SUCCESSOR(1-planeSize_);         //-z+x
+    SHORTCUT_SUCCESSOR(width_-planeSize_);    //-z+y
+    SHORTCUT_SUCCESSOR(-1-planeSize_);        //-z-x
+    SHORTCUT_SUCCESSOR(-width_-1-planeSize_); //-z-y-x
+    SHORTCUT_SUCCESSOR(-width_+1-planeSize_); //-z-y+x
+    SHORTCUT_SUCCESSOR(width_+1-planeSize_);  //-z+y+x
+    SHORTCUT_SUCCESSOR(width_-1-planeSize_);  //-z+y-x
+
+    for(unsigned int i=0; i<state->egraph_vertices.size(); i++){
+      if(state->egraph_vertices[i]->component==component){
+        shortcuts.push_back(state->egraph_vertices[i]);
+        break;
+      }
+    }
+  }
+}
+
 
