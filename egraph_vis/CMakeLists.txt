@@ -1,11 +1,16 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(egraph_vis)
 
-find_package(catkin REQUIRED COMPONENTS egraphs)
+find_package(catkin REQUIRED roscpp)
+
+find_package(PkgConfig)
+pkg_check_modules(PC_SBPL egraphs)
+include_directories(${PC_EGRAPHS_INCLUDE_DIRS})
+link_directories(${PC_EGRAPHS_LIBRARY_DIRS})
 
 catkin_package(INCLUDE_DIRS include src
                LIBRARIES egraph_vis
-               CATKIN_DEPENDS egraphs)
+               DEPENDS egraphs)
 
 include_directories(include ${catkin_INCLUDE_DIRS})
 
