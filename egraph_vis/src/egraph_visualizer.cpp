@@ -21,11 +21,20 @@ void EGraphVisualizer::visualize(){
   vis_table_.resize(eg_->id2vertex.size());
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     EGraph::EGraphVertex* v = eg_->id2vertex[i];
+
+    bool valid = false;
+    for(unsigned int a=0; a<v->valid.size(); a++)
+      valid |= v->valid[a];
+    if(!valid)
+      continue;
+
     addState(v,false);
 
     vector<double> coord;
     eg_->discToCont(v,coord);
     for(unsigned int j=0; j<v->neighbors.size(); j++){
+      if(!v->valid[j])
+        continue;
       EGraph::EGraphVertex* u = v->neighbors[j];
       if(v->id<u->id){
         vector<double> coord2;

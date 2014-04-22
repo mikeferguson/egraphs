@@ -78,9 +78,21 @@ void EGraph3dGridHeuristic::runPrecomputations(){
   vector<double> c_coord;
   ROS_INFO("down project edges...");
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
+    bool valid = false;
+    for(unsigned int a=0; a<eg_->id2vertex[i]->valid.size(); a++)
+      valid |= eg_->id2vertex[i]->valid[a];
+    if(!valid)
+      continue;
+
     eg_->discToCont(eg_->id2vertex[i],c_coord);
     //ROS_INFO("size of coord %d",c_coord.size());
     downProject_->downProject(c_coord,dp);
+    if(dp[0] > sizex_ ||
+        dp[1] > sizey_ ||
+        dp[2] > sizez_){
+      ROS_WARN("edge out of bounds %d",eg_->id2vertex[i]->id);
+      continue;
+    }
     //ROS_INFO("size of coord %d",dp.size());
     //ROS_INFO("coord %d %d %d",dp[0],dp[1],dp[2]);
     heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
