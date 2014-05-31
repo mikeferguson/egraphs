@@ -752,7 +752,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
         return false;
       }
       v->neighbors.push_back(id2vertex[id]);
-      v->valid.push_back(true);
+      //v->valid.push_back(true);
       v->use_frequency.push_back(0);
       if(v->id < id)
         num_edges_++;
