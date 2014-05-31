@@ -74,6 +74,9 @@ void EGraph3dGridHeuristic::runPrecomputations(){
     sc[i].egraph_vertices.clear();
   }
 
+  empty_components_.clear();
+  // if false, 
+  empty_components_.resize(eg_->getNumComponents(), false);
   vector<int> dp;
   vector<double> c_coord;
   ROS_INFO("down project edges...");
@@ -81,8 +84,10 @@ void EGraph3dGridHeuristic::runPrecomputations(){
     bool valid = false;
     for(unsigned int a=0; a<eg_->id2vertex[i]->valid.size(); a++)
       valid |= eg_->id2vertex[i]->valid[a];
-    if(!valid)
+    if(!valid){
+      empty_components_[eg_->id2vertex[i]->component] = true;
       continue;
+    }
 
     eg_->discToCont(eg_->id2vertex[i],c_coord);
     //ROS_INFO("size of coord %d",c_coord.size());
@@ -99,7 +104,20 @@ void EGraph3dGridHeuristic::runPrecomputations(){
     sc[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.push_back(eg_->id2vertex[i]);
     //ROS_INFO("push_back");
   }
+  shortcut_cache_.clear();
+  shortcut_cache_.resize(eg_->getNumComponents(), NULL);
   //ROS_INFO("done precomputations");
+}
+
+void EGraph3dGridHeuristic::resetShortcuts(){
+  sc_heap.makeemptyheap();
+  int id = HEUR_XYZ2ID(goal_dp_[0],goal_dp_[1],goal_dp_[2]);
+  CKey key;
+  key.key[0] = 0;
+  sc_heap.insertheap(&sc[id],key);
+  sc[id].cost = 0;
+  shortcut_cache_.clear();
+  shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
 void EGraph3dGridHeuristic::setGoal(vector<double> goal){
@@ -145,6 +163,8 @@ void EGraph3dGridHeuristic::setGoal(vector<double> goal){
   sc[id].cost = 0;
 
   inflated_cost_1_move_ = cost_1_move_ * epsE_;
+  shortcut_cache_.clear();
+  shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
 #define HEUR_SUCCESSOR(offset){                                                   \
@@ -230,20 +250,6 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
       }
     }
 
-    /*
-    if(cell->closed){
-      FILE* fout = fopen("heur3d.csv","w");
-      for(unsigned int x=0; x<width_; x++){
-        for(unsigned int y=0; y<height_; y++){
-          for(unsigned int z=0; z<length_; z++){
-            int id = HEUR_XYZ2ID(x,y,z);
-            fprintf(fout,"%d %d %d %d\n",x,y,z,heur[id].cost);
-          }
-        }
-      }
-      fclose(fout);
-    }
-    */
   }
   return cell->cost;
 }
@@ -264,7 +270,19 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
 void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGraphVertex*>&     shortcuts){
   //we can assume that we would not be called if we have already discovered that component
 
+  shortcuts.clear();
+  if (shortcut_cache_[component]){
+      shortcuts.push_back(shortcut_cache_[component]);
+      return;
+  }
+
+  // if we have already determined that this is an empty component, skip
+  if (empty_components_[component]){
+      return;
+  }
+
   CKey key;
+  int counter = 0;
   //compute distance from H to all cells and note for each cell, what node in H was the closest
   while(!sc_heap.emptyheap() && shortcuts.empty()){
     EGraph3dGridHeuristicCell* state = (EGraph3dGridHeuristicCell*)sc_heap.deleteminheap();
@@ -301,12 +319,61 @@ void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
     SHORTCUT_SUCCESSOR(width_+1-planeSize_);  //-z+y+x
     SHORTCUT_SUCCESSOR(width_-1-planeSize_);  //-z+y-x
 
-    for(unsigned int i=0; i<state->egraph_vertices.size(); i++){
-      if(state->egraph_vertices[i]->component==component){
-        shortcuts.push_back(state->egraph_vertices[i]);
-        break;
+    for(size_t i=0; i<state->egraph_vertices.size(); i++){
+      int comp_num = state->egraph_vertices[i]->component;
+      if(!shortcut_cache_[comp_num]){
+        shortcut_cache_[comp_num] = state->egraph_vertices[i];
+        bool valid = 0;
+        for (size_t j = 0; j < state->egraph_vertices[i]->valid.size(); j++){
+            valid |= state->egraph_vertices[i]->valid[j];
+        }
+        assert(valid == true);
+        if (comp_num == component){
+            // remember, when this gets filled in, it also breaks out of the
+            // while loop
+            shortcuts.push_back(state->egraph_vertices[i]);
+            break;
+        }
       }
     }
+    counter++;
+  }
+  //ROS_INFO("number of shortcuts returned %lu", shortcuts.size());
+  ROS_INFO("number of shortcut expands: %d", counter);
+
+  if (!shortcuts.size()){
+      int count=0;
+      for (size_t i=0; i < eg_->id2vertex.size(); i++){
+          if (eg_->id2vertex[i]->component == component){
+              count++;
+          }
+      }
+
+      int valid_count = 0;
+      int invalid_count = 0;
+      ROS_ERROR("component %d has no shortcuts but has %d vertices!", component, count);
+      //for (size_t i=0; i < eg_->id2vertex.size(); i++){
+      //    if (eg_->id2vertex[i]->component == component){
+      //        for (size_t j=0; j < eg_->id2vertex[i]->neighbors.size(); j++){
+      //            vector<double> c;
+      //            eg_->discToCont(eg_->id2vertex[i]->neighbors[j], c);
+      //            printf("component %d\n", eg_->id2vertex[i]->neighbors[j]->component);
+      //            for (size_t a=0; a < c.size(); a++){
+      //                printf("%f ", c[a]);
+      //            }
+      //            printf("\n");
+      //            if (eg_->id2vertex[i]->valid[j]){
+      //                valid_count++;
+      //            } else {
+      //                invalid_count++;
+      //            }
+      //        }
+      //    }
+      //}
+
+      ROS_ERROR("has %d valid edges and %d invalid edges",valid_count, invalid_count);
+
+      assert(false);
   }
 }
 

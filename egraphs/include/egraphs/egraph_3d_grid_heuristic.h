@@ -5,6 +5,7 @@
 #include<egraphs/egraph.h>
 #include<egraphs/egraph_down_project.h>
 #include<sbpl/headers.h>
+#include <map>
 
 /*
 -a general N-dimensional dijkstra
@@ -25,6 +26,8 @@ class EGraph3dGridHeuristic : public EGraphHeuristic{
     void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices);
     void runPrecomputations();
     void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts);
+    virtual void resetShortcuts();
+    //void setEpsE(double e){ epsE_ = e; inflated_cost_1_move_ = cost_1_move_ * epsE_;};
 
   protected:
     class EGraph3dGridHeuristicCell: public AbstractSearchState{
@@ -51,7 +54,9 @@ class EGraph3dGridHeuristic : public EGraphHeuristic{
     CHeap heap;
     CHeap sc_heap;
     vector<int> goal_dp_;
-
+    
+    std::vector<bool> empty_components_;
+    std::vector<EGraph::EGraphVertex*> shortcut_cache_;
     vector<EGraph3dGridHeuristicCell> heur;
     vector<EGraph3dGridHeuristicCell> sc;
     EGraphDownProject* downProject_;

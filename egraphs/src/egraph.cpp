@@ -446,6 +446,7 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
   for(unsigned int i=0; i<coords.size(); i++){
     if(res_.size()+num_constants_ != coords[i].size()){
       ROS_ERROR("[EGraph] There is a coordinate in the path that doesn't have enough fields!");
+      ROS_ERROR("[EGraph] Expecting %lu, got coordinate of size %lu", res_.size()+num_constants_, coords[i].size());
       return false;
     }
     vector<int> dc;
@@ -494,7 +495,7 @@ void EGraph::computeComponents(){
         q.pop_back();
         for(unsigned int j=0; j<v->neighbors.size(); j++){
           EGraphVertex* u = v->neighbors[j];
-          if(u->component<0){
+          if(v->valid[j] && u->component<0){
             u->component = num_components_;
             q.push_back(u);
           }
@@ -625,6 +626,12 @@ bool EGraph::save(string filename){
       fprintf(fout,"%d ",v->neighbors[j]->id);
     for(unsigned int j=0; j<v->costs.size(); j++)
       fprintf(fout,"%d ",v->costs[j]);
+    for(unsigned int j=0; j<v->valid.size(); j++){
+
+      if (v->valid[j]){ assert(v->costs[j] > 0); }
+
+      fprintf(fout,"%d ",(v->valid[j]==true));
+    }
     fprintf(fout,"\n");
   }
 
@@ -651,14 +658,14 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   //read the number of dimensions
   int num_dimensions;
   if(fscanf(fin,"%d", &num_dimensions) != 1){
-    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...1",filename.c_str());
     fclose(fin);
     return false;
   }
 
   //read the number of constants
   if(fscanf(fin,"%d", &num_constants_) != 1){
-    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...2",filename.c_str());
     fclose(fin);
     return false;
   }
@@ -669,10 +676,11 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   double min,max,res;
   for(int i=0; i<num_dimensions; i++){
     if(fscanf(fin,"%s %lf %lf %lf",name,&min,&max,&res) != 4){
-      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...3",filename.c_str());
       fclose(fin);
       return false;
     }
+    printf("read in %s", name);
     names_.push_back(name);
     min_.push_back(min);
     max_.push_back(max);
@@ -683,7 +691,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   //read in the number of vertices
   int num_vertices;
   if(fscanf(fin,"%d", &num_vertices) != 1){
-    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+    ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...4",filename.c_str());
     fclose(fin);
     return false;
   }
@@ -704,7 +712,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     vector<double> coord;
     for(int j=0; j<num_dimensions; j++){
       if(fscanf(fin,"%lf",&val) != 1){
-        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...5",filename.c_str());
         fclose(fin);
         return false;
       }
@@ -713,7 +721,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     contToDisc(coord,v->coord);
     for(int j=0; j<num_constants_; j++){
       if(fscanf(fin,"%lf",&val) != 1){
-        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...6",filename.c_str());
         fclose(fin);
         return false;
       }
@@ -729,7 +737,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     //read in the number of neighbors
     int num_neighbors;
     if(fscanf(fin,"%d", &num_neighbors) != 1){
-      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...7",filename.c_str());
       fclose(fin);
       return false;
     }
@@ -739,7 +747,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     int id;
     for(int j=0; j<num_neighbors; j++){
       if(fscanf(fin,"%d",&id) != 1){
-        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...8",filename.c_str());
         fclose(fin);
         return false;
       }
@@ -755,11 +763,23 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     int cost;
     for(int j=0; j<num_neighbors; j++){
       if(fscanf(fin,"%d",&cost) != 1){
-        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...",filename.c_str());
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...9",filename.c_str());
         fclose(fin);
         return false;
       }
       v->costs.push_back(cost);
+    }
+    
+    //printf("  read in valid\n");
+    //read in the valid to the neighbors
+    int valid;
+    for(int j=0; j<num_neighbors; j++){
+      if(fscanf(fin,"%d",&valid) != 1){
+        ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...10",filename.c_str());
+        fclose(fin);
+        return false;
+      }
+      v->valid.push_back(valid==true);
     }
   }
   printf("done reading egraph from file\n");
@@ -928,6 +948,10 @@ int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVer
         u->heapindex = 0;
       }
       int newCost = v->search_cost + v->costs[i];
+      if (newCost <= 0){
+          ROS_INFO("%d %d %d", v->search_cost, v->costs[i], (v->valid[i]==true));
+      }
+      assert(newCost > 0);
       if(u->search_cost > newCost){ //if we found a cheaper path to it
         key.key[0] = newCost;
         if(u->heapindex != 0)
@@ -958,6 +982,7 @@ int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVer
       //ROS_INFO("descend from %d",v->id);
       for(unsigned int i=0; i<v->neighbors.size(); i++){
         if(v->neighbors[i]->search_iteration==search_iteration_ &&
+           v->valid[i] &&
            v->neighbors[i]->search_cost + v->costs[i] < min_cost){
           min_cost = v->neighbors[i]->search_cost + v->costs[i];
           min_idx = i;
@@ -967,6 +992,7 @@ int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVer
         ROS_ERROR("[EGraph] getShortestPath found a local minima while reconstructing the path...");
         return INFINITECOST;
       }
+      assert(v->costs[min_idx]>0);
       c.push_back(v->costs[min_idx]);
       p.push_back(v->neighbors[min_idx]);
       v = v->neighbors[min_idx];

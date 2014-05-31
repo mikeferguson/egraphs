@@ -33,13 +33,14 @@ class EGraphHeuristic{
     virtual void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts){};
 
     virtual void runPrecomputations(){};
+    virtual void resetShortcuts() = 0;
 
     void initialize(EGraph* eg){
       eg_ = eg;
       runPrecomputations();
     };
 
-    void setEpsE(double e){
+    virtual void setEpsE(double e){
       epsE_ = e;
       vector<double> dummy_goal;
       setGoal(dummy_goal);
