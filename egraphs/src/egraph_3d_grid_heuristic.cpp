@@ -69,6 +69,7 @@ void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> co
 void EGraph3dGridHeuristic::runPrecomputations(){
   //ROS_INFO("begin precomputations");
   //refill the cell to egraph vertex mapping
+  clock_t time = clock();
   for(int i=0; i<gridSize_; i++){
     heur[i].egraph_vertices.clear();
     sc[i].egraph_vertices.clear();
@@ -106,6 +107,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
   }
   shortcut_cache_.clear();
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
+  ROS_INFO("precomp time took %f", double(time-clock())/CLOCKS_PER_SEC);
   //ROS_INFO("done precomputations");
 }
 
@@ -129,6 +131,8 @@ void EGraph3dGridHeuristic::setGoal(vector<double> goal){
     heur[i].closed = false;
     if(heur[i].cost!=-1)
       heur[i].cost = INFINITECOST;
+  }
+  for(int i=0; i<gridSize_; i++){
     sc[i].id = i;
     sc[i].heapindex = 0;
     sc[i].closed = false;

@@ -30,6 +30,10 @@ class EGraphable{
     virtual int getStateID(vector<double>& coord) = 0;
 
     virtual bool isValidEdge(vector<double>& coord, vector<double>& coord2, int& cost) = 0;
+    virtual bool isValidVertex(vector<double>& coord) = 0;
+    
+typedef std::vector<std::pair<std::pair<std::vector<double>, std::vector<double> >, bool> > DisplayEdges;
+    virtual void displayPath(const DisplayEdges& path) = 0;
 
     //in the future we could ask them to implement features for their environment....we could have some built in ones like 2D patch and 3D patch
 };

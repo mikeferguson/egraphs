@@ -670,7 +670,6 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     return false;
   }
 
-  printf("read dimension details\n");
   //read in all the dimension details
   char name[128];
   double min,max,res;
@@ -680,14 +679,12 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       fclose(fin);
       return false;
     }
-    printf("read in %s", name);
     names_.push_back(name);
     min_.push_back(min);
     max_.push_back(max);
     res_.push_back(res);
   }
 
-  printf("read num vertices\n");
   //read in the number of vertices
   int num_vertices;
   if(fscanf(fin,"%d", &num_vertices) != 1){
@@ -701,7 +698,6 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     id2vertex.push_back(v);
   }
 
-  printf("read each vertex\n");
   //read in each vertex
   for(int i=0; i<num_vertices; i++){
     //printf("vertex %d\n",i);
@@ -782,10 +778,9 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
       v->valid.push_back(valid==true);
     }
   }
-  printf("done reading egraph from file\n");
-
   fclose(fin);
 
+  ROS_INFO("finished reading in egraph of size %lu", id2vertex.size());
   computeComponents();
 
   return true;
@@ -803,6 +798,18 @@ void EGraph::updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost
       v2->valid[i] = valid;
       v2->costs[i] = cost;
     }
+  }
+}
+
+void EGraph::invalidateVertex(EGraphVertex* v1){
+  for (size_t i=0; i < v1->neighbors.size(); i++){
+      EGraphVertex* v2 = v1->neighbors[i];
+      for (size_t j=0; j < v2->neighbors.size(); j++){
+          if (v2->neighbors[j] == v1){
+              v2->valid[j] = false;
+          }
+      }
+      v1->valid[i] = false;
   }
 }
 

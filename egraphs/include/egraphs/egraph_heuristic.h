@@ -42,8 +42,8 @@ class EGraphHeuristic{
 
     virtual void setEpsE(double e){
       epsE_ = e;
-      vector<double> dummy_goal;
-      setGoal(dummy_goal);
+      //vector<double> dummy_goal;
+      //setGoal(dummy_goal);
     };
 
   protected:

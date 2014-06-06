@@ -90,6 +90,7 @@ class EGraph{
     void setClusterRadius(double r){cluster_radius_ = r;};
 
     void updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost);
+    void invalidateVertex(EGraphVertex* v1);
 
     void discToCont(EGraphVertex* v, vector<double>& c);
     void contToDisc(vector<double> c, vector<int>& d);
