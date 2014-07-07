@@ -21,6 +21,14 @@ class EGraph{
           search_iteration = 0;
         };
 
+        bool isNeighbor(EGraphVertex* v){
+            for (size_t i=0; i < neighbors.size(); i++){
+                EGraphVertex* neighbor = neighbors[i];
+                if (neighbor == v){ return true;}
+            }
+            return false;
+        };
+
         int id;
         vector<int> coord;
         vector<double> constants;

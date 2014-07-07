@@ -112,6 +112,13 @@ void EGraph3dGridHeuristic::runPrecomputations(){
 }
 
 void EGraph3dGridHeuristic::resetShortcuts(){
+  for(int i=0; i<gridSize_; i++){
+    sc[i].id = i;
+    sc[i].heapindex = 0;
+    sc[i].closed = false;
+    if(sc[i].cost!=-1)
+      sc[i].cost = INFINITECOST;
+  }
   sc_heap.makeemptyheap();
   int id = HEUR_XYZ2ID(goal_dp_[0],goal_dp_[1],goal_dp_[2]);
   CKey key;
@@ -345,7 +352,7 @@ void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
   //ROS_INFO("number of shortcuts returned %lu", shortcuts.size());
   ROS_INFO("number of shortcut expands: %d", counter);
 
-  if (!shortcuts.size()){
+  if (shortcuts.empty()){
       int count=0;
       for (size_t i=0; i < eg_->id2vertex.size(); i++){
           if (eg_->id2vertex[i]->component == component){
@@ -356,24 +363,19 @@ void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
       int valid_count = 0;
       int invalid_count = 0;
       ROS_ERROR("component %d has no shortcuts but has %d vertices!", component, count);
-      //for (size_t i=0; i < eg_->id2vertex.size(); i++){
-      //    if (eg_->id2vertex[i]->component == component){
-      //        for (size_t j=0; j < eg_->id2vertex[i]->neighbors.size(); j++){
-      //            vector<double> c;
-      //            eg_->discToCont(eg_->id2vertex[i]->neighbors[j], c);
-      //            printf("component %d\n", eg_->id2vertex[i]->neighbors[j]->component);
-      //            for (size_t a=0; a < c.size(); a++){
-      //                printf("%f ", c[a]);
-      //            }
-      //            printf("\n");
-      //            if (eg_->id2vertex[i]->valid[j]){
-      //                valid_count++;
-      //            } else {
-      //                invalid_count++;
-      //            }
-      //        }
-      //    }
-      //}
+      for (size_t i=0; i < eg_->id2vertex.size(); i++){
+          if (eg_->id2vertex[i]->component == component){
+              for (size_t j=0; j < eg_->id2vertex[i]->neighbors.size(); j++){
+                  vector<double> c;
+                  eg_->discToCont(eg_->id2vertex[i]->neighbors[j], c);
+                  if (eg_->id2vertex[i]->valid[j]){
+                      valid_count++;
+                  } else {
+                      invalid_count++;
+                  }
+              }
+          }
+      }
 
       ROS_ERROR("has %d valid edges and %d invalid edges",valid_count, invalid_count);
 
