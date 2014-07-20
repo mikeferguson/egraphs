@@ -5,6 +5,7 @@
 #include<egraphs/egraph.h>
 #include<egraphs/egraph_down_project.h>
 #include<sbpl/headers.h>
+#include<map>
 
 /*
 -a general N-dimensional dijkstra
@@ -25,6 +26,7 @@ class EGraph2dGridHeuristic : public EGraphHeuristic{
     void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices);
     void runPrecomputations();
     void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts);
+    virtual void resetShortcuts();
 
   protected:
     class EGraph2dGridHeuristicCell: public AbstractSearchState{
@@ -49,6 +51,8 @@ class EGraph2dGridHeuristic : public EGraphHeuristic{
     CHeap sc_heap;
     vector<int> goal_dp_;
 
+    std::vector<bool> empty_components_;
+    std::vector<EGraph::EGraphVertex*> shortcut_cache_;
     vector<EGraph2dGridHeuristicCell> heur;
     vector<EGraph2dGridHeuristicCell> sc;
     EGraphDownProject* downProject_;

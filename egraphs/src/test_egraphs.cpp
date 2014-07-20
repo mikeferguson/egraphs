@@ -23,11 +23,11 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
 
     virtual bool getGoalCoord(vector<double>& parent, vector<double>& goal){
       return true;
-    }
+    };
 
     virtual bool isGoal(int id){
       return false;
-    }
+    };
 
     virtual int getStateID(vector<double>& coord){
       return 0;
@@ -35,7 +35,11 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
 
     virtual bool isValidEdge(vector<double>& coord, vector<double>& coord2, int& cost){
       return true;
-    }
+    };
+
+    virtual bool isValidVertex(vector<double>& coord){
+      return true;
+    };
 };
 
 class myDownProject : public EGraphDownProject{

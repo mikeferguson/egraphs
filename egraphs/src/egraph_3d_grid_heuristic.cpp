@@ -276,20 +276,20 @@ int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
   }                                               \
 }
 
-// 2d breadth first search from goal to all other states until desired component
+// 3d breadth first search from goal to all other states until desired component
 //
 void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGraphVertex*>&     shortcuts){
   //we can assume that we would not be called if we have already discovered that component
 
   shortcuts.clear();
   if (shortcut_cache_[component]){
-      shortcuts.push_back(shortcut_cache_[component]);
-      return;
+    shortcuts.push_back(shortcut_cache_[component]);
+    return;
   }
 
   // if we have already determined that this is an empty component, skip
   if (empty_components_[component]){
-      return;
+    return;
   }
 
   CKey key;
