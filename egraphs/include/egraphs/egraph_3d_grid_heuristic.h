@@ -4,7 +4,6 @@
 #include<egraphs/egraph_heuristic.h>
 #include<egraphs/egraph.h>
 #include<sbpl/headers.h>
-#include<egraphs/egraph_down_project.h>
 #include <map>
 
 /*
@@ -17,13 +16,13 @@
 -a 2D, 8-connected uniform cost dijkstra (an optimized version of the n-dimensional version)
 */
 
-class EGraph3dGridHeuristic : public EGraphHeuristic{
+class EGraph3dGridHeuristic : public EGraphHeuristic<vector<int> >{
   public:
-    EGraph3dGridHeuristic(EGraphDownProject* downProject, int size_x, int size_y, int size_z, int move_cost);
+    EGraph3dGridHeuristic(const EGraphable<vector<int> >& env, int size_x, int size_y, int size_z, int move_cost);
     void setGrid(const vector<vector<vector<bool> > >& grid);
-    void setGoal(const vector<double>& goal);
-    int getHeuristic(const vector<double>& coord);
-    void getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices);
+    void setGoal(const vector<int>& goal);
+    int getHeuristic(const vector<int>& coord);
+    void getEGraphVerticesWithSameHeuristic(const vector<int>& coord, vector<EGraph::EGraphVertex*>& vertices);
     void runPrecomputations();
     void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts);
     virtual void resetShortcuts();
@@ -59,7 +58,7 @@ class EGraph3dGridHeuristic : public EGraphHeuristic{
     std::vector<EGraph::EGraphVertex*> shortcut_cache_;
     vector<EGraph3dGridHeuristicCell> heur;
     vector<EGraph3dGridHeuristicCell> sc;
-    EGraphDownProject* downProject_;
+    const EGraphable<vector<int> >& env_;
 };
 
 #endif

@@ -2,8 +2,9 @@
 
 #define HEUR_XYZ2ID(x,y,z) ((z + 1) * planeSize_ + (y + 1) * width_ + (x + 1))
 
-EGraph3dGridHeuristic::EGraph3dGridHeuristic(EGraphDownProject* downProject, int size_x, int size_y, int size_z, int move_cost){
-  downProject_ = downProject;
+EGraph3dGridHeuristic::EGraph3dGridHeuristic(const EGraphable<vector<int> >& env, 
+                                             int size_x, int size_y, int size_z, 
+                                             int move_cost): env_(env){
   sizex_ = size_x;
   sizey_ = size_y;
   sizez_ = size_z;
@@ -58,12 +59,10 @@ void EGraph3dGridHeuristic::setGrid(const vector<vector<vector<bool> > >& grid){
 
 }
 
-void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices){
-  vector<int> dp;
-  downProject_->downProject(coord,dp);
+void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(const vector<int>& coord, vector<EGraph::EGraphVertex*>& vertices){
   vertices.clear();
   //printf("verts in cell: %d\n",heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices.size());
-  vertices = heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])].egraph_vertices;
+  vertices = heur[HEUR_XYZ2ID(coord[0],coord[1],coord[2])].egraph_vertices;
 }
 
 void EGraph3dGridHeuristic::runPrecomputations(){
@@ -92,7 +91,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
 
     eg_->discToCont(eg_->id2vertex[i],c_coord);
     //ROS_INFO("size of coord %d",c_coord.size());
-    downProject_->downProject(c_coord,dp);
+    env_.projectToHeuristicSpace(c_coord,dp);
     if(dp[0] > sizex_ ||
         dp[1] > sizey_ ||
         dp[2] > sizez_){
@@ -129,7 +128,7 @@ void EGraph3dGridHeuristic::resetShortcuts(){
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
-void EGraph3dGridHeuristic::setGoal(const vector<double>& goal){
+void EGraph3dGridHeuristic::setGoal(const vector<int>& goal){
   //ROS_ERROR("begin setGoal");
   //clear the heur data structure
   for(int i=0; i<gridSize_; i++){
@@ -152,13 +151,7 @@ void EGraph3dGridHeuristic::setGoal(const vector<double>& goal){
     dp = goal_dp_;
   }
   else{
-
-    //down project the goal state and add it to the queue
-    //downProject_->downProject(goal,dp);
-
-    //assume we are given the goal already down projected
-    for(unsigned int i=0; i<goal.size(); i++)
-      dp.push_back(int(goal[i]));
+    dp = goal;
     goal_dp_ = dp;
   }
   CKey key;
@@ -188,22 +181,21 @@ void EGraph3dGridHeuristic::setGoal(const vector<double>& goal){
   }                                                                               \
 }
 
-int EGraph3dGridHeuristic::getHeuristic(const vector<double>& coord){
-  vector<int> dp;
-  downProject_->downProject(coord,dp);
-  EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];
-
-  if(dp[0] > sizex_ ||
-     dp[1] > sizey_ ||
-     dp[2] > sizez_){
-    ROS_ERROR("out of bounds heuristic request: %d %d %d -> %d\n",dp[0],dp[1],dp[2],HEUR_XYZ2ID(dp[0],dp[1],dp[2]));
+int EGraph3dGridHeuristic::getHeuristic(const vector<int>& coord){
+  if(coord[0] > sizex_ ||
+     coord[1] > sizey_ ||
+     coord[2] > sizez_){
+    ROS_ERROR("out of bounds heuristic request: %d %d %d -> %d\n",coord[0],coord[1],coord[2],HEUR_XYZ2ID(coord[0],coord[1],coord[2]));
     exit(1);
     return INFINITECOST;
   }
 
+  EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(coord[0],coord[1],coord[2])];
+
   if(cell->cost==-1)
     return INFINITECOST;
   
+  vector<int> dp(3,0);
   CKey key;
   //compute distance from H to all cells and note for each cell, what node in H was the closest
   while(!heap.emptyheap() && !cell->closed){
@@ -247,7 +239,7 @@ int EGraph3dGridHeuristic::getHeuristic(const vector<double>& coord){
         if(!state->egraph_vertices[i]->valid[j])
           continue;
         eg_->discToCont(state->egraph_vertices[i]->neighbors[j],c_coord);
-        downProject_->downProject(c_coord,dp);
+        env_.projectToHeuristicSpace(c_coord,dp);
         EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];
         int newCost = oldCost + state->egraph_vertices[i]->costs[j];
         if(cell->cost > newCost){ //if we found a cheaper path to it

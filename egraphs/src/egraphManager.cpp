@@ -1,8 +1,7 @@
-#include <egraphs/egraphManager.h>
-
 using namespace std;
 
-EGraphManager::EGraphManager(EGraphPtr egraph, 
+template <typename HeuristicType>
+EGraphManager<HeuristicType>::EGraphManager(EGraphPtr egraph, 
                              EGraphablePtr egraph_env, 
                              EGraphHeuristicPtr egraph_heur):
     egraph_env_(egraph_env), egraph_(egraph), egraph_heur_(egraph_heur) {
@@ -13,21 +12,25 @@ EGraphManager::EGraphManager(EGraphPtr egraph,
     initEGraph(set_goal);
 }
 
-int EGraphManager::getHeuristic(int state_id){
+template <typename HeuristicType>
+int EGraphManager<HeuristicType>::getHeuristic(int state_id){
     if (egraph_env_->isGoal(state_id)){
         return 0;
     }
     ContState cont_state;
     egraph_env_->getCoord(state_id, cont_state);
+    HeuristicType heur_coord;
+    egraph_env_->projectToHeuristicSpace(cont_state,heur_coord);
     double t0 = ros::Time::now().toSec();
-    int heur_val = egraph_heur_->getHeuristic(cont_state);
+    int heur_val = egraph_heur_->getHeuristic(heur_coord);
     stats_.heuristic_computation_time += ros::Time::now().toSec() - t0;
     return heur_val;
 }
 
 // goes through each vertex in the egraph and makes sure it has valid
 // edges. if update_egraph=true, it recomputes the egraph components
-void EGraphManager::validateEGraph(bool update_egraph){
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::validateEGraph(bool update_egraph){
     clock_t time = clock();
     int num_invalid_edges = 0;
 
@@ -72,10 +75,10 @@ void EGraphManager::validateEGraph(bool update_egraph){
 }
 
 // sets the goal id in the heuristic and also clears the snap cache 
-bool EGraphManager::setGoal(int goal_id){
-    ContState coord;
-    // retrieve discrete xyz of goal coord
-    egraph_env_->getGoalHeuristicCoord(coord);
+template <typename HeuristicType>
+bool EGraphManager<HeuristicType>::setGoal(int goal_id){
+    HeuristicType coord;
+    egraph_env_->projectGoalToHeuristicSpace(coord);
     stats_.heuristic_computation_time  = 0;
     stats_.combo_time  = 0;
     stats_.shortest_path_time  = 0;
@@ -91,7 +94,8 @@ bool EGraphManager::setGoal(int goal_id){
 }
 
 // computes if a snap is actually valid between two ids
-int EGraphManager::getSnapTrueCost(int parentID, int childID){
+template <typename HeuristicType>
+int EGraphManager<HeuristicType>::getSnapTrueCost(int parentID, int childID){
     Edge edge(parentID, childID);
 
     ContState source_state;
@@ -116,16 +120,19 @@ int EGraphManager::getSnapTrueCost(int parentID, int childID){
 
 // lazily generates snaps. also updates the snaps_ cache which currently just
 // stores whether a particular edge is a snap edge.
-void EGraphManager::getSnapSuccessors(int stateID, vector<int>* SuccIDV, 
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::getSnapSuccessors(int stateID, vector<int>* SuccIDV, 
                                       vector<int>* CostV, 
                                       vector<bool>* isTrueCost,
                                       vector<EdgeType>* edgeTypes){
     //ROS_INFO("looking for snaps");
     ContState source_state;
     egraph_env_->getCoord(stateID, source_state);
+    HeuristicType heuristic_coord;
+    egraph_env_->projectToHeuristicSpace(source_state,heuristic_coord);
     vector<EGraph::EGraphVertex*> equal_heur_vertices;
     //ROS_INFO("get verts with same heur...");
-    egraph_heur_->getEGraphVerticesWithSameHeuristic(source_state,
+    egraph_heur_->getEGraphVerticesWithSameHeuristic(heuristic_coord,
                                                      equal_heur_vertices);
     //ROS_INFO("%d possible snaps",equal_heur_vertices.size());
 
@@ -162,7 +169,8 @@ void EGraphManager::getSnapSuccessors(int stateID, vector<int>* SuccIDV,
 //      source->[snap]->snap_id->[shortcut]->successor
 // the cost of this successor will be the cost of the snap + cost of
 // shortcut. 
-void EGraphManager::getComboSnapShortcutSuccessors(int stateID, 
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::getComboSnapShortcutSuccessors(int stateID, 
                                                    vector<int>* SuccIDV, 
                                                    vector<int>* CostV, 
                                                    vector<bool>* isTrueCost){
@@ -217,7 +225,8 @@ void EGraphManager::getComboSnapShortcutSuccessors(int stateID,
     stats_.combo_time += static_cast<double>(clock()-time)/CLOCKS_PER_SEC;
 }
 
-void EGraphManager::getSnapShortcuts(int stateID, 
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::getSnapShortcuts(int stateID, 
                                      vector<int>* SuccIDV, 
                                      vector<int>* CostV, 
                                      vector<bool>* isTrueCost,
@@ -225,9 +234,11 @@ void EGraphManager::getSnapShortcuts(int stateID,
                                      vector<int>* snap_midpoints){
   ContState source_state;
   egraph_env_->getCoord(stateID, source_state);
+  HeuristicType heuristic_coord;
+  egraph_env_->projectToHeuristicSpace(source_state,heuristic_coord);
   vector<EGraph::EGraphVertex*> equal_heur_vertices;
   //ROS_INFO("get verts with same heur...");
-  egraph_heur_->getEGraphVerticesWithSameHeuristic(source_state, equal_heur_vertices);
+  egraph_heur_->getEGraphVerticesWithSameHeuristic(heuristic_coord, equal_heur_vertices);
   //ROS_INFO("%d possible snaps",equal_heur_vertices.size());
 
   // for all vertices with the same heuristic value
@@ -260,7 +271,8 @@ void EGraphManager::getSnapShortcuts(int stateID,
 }
 
 // computes if a snap is actually valid between two ids
-int EGraphManager::getSnapShortcutTrueCost(int parentID, int snap_midpoint, int childID){
+template <typename HeuristicType>
+int EGraphManager<HeuristicType>::getSnapShortcutTrueCost(int parentID, int snap_midpoint, int childID){
   ContState pre_snap;
   egraph_env_->getCoord(parentID, pre_snap);
   
@@ -290,7 +302,8 @@ int EGraphManager::getSnapShortcutTrueCost(int parentID, int snap_midpoint, int 
   return cost_of_snap + shortcut_costs[0];
 }
 
-bool EGraphManager::reconstructSnapShortcut(LazyARAState* state, LazyARAState*& next_state,
+template <typename HeuristicType>
+bool EGraphManager<HeuristicType>::reconstructSnapShortcut(LazyARAState* state, LazyARAState*& next_state,
                                             vector<int>* wholePathIds, vector<int>* costs,
                                             int& totalCost){
 
@@ -322,7 +335,8 @@ bool EGraphManager::reconstructSnapShortcut(LazyARAState* state, LazyARAState*& 
   return true;
 }
 
-DiscState EGraphManager::getDiscStateFromID(int state_id){
+template <typename HeuristicType>
+DiscState EGraphManager<HeuristicType>::getDiscStateFromID(int state_id){
     ContState source_state;
     DiscState disc_source_state;
     egraph_env_->getCoord(state_id,source_state);
@@ -335,7 +349,8 @@ DiscState EGraphManager::getDiscStateFromID(int state_id){
 // assumes there's <= 1 shortcut per component. this does NOT do anything with
 // the points that make up the shortcut - that's dealt with in
 // reconstructDirectShortcuts
-void EGraphManager::getDirectShortcutSuccessors(int source_state_id, vector<int>* SuccIDV, 
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::getDirectShortcutSuccessors(int source_state_id, vector<int>* SuccIDV, 
                                                 vector<int>* CostV, vector<bool>* isTrueCost,
                                                 vector<EdgeType>* edgeTypes){
     //ROS_INFO("looking for direct shortcuts for %d", source_state_id);
@@ -390,7 +405,8 @@ void EGraphManager::getDirectShortcutSuccessors(int source_state_id, vector<int>
 
 // figures out if we've used a direct shortcut or not. if we have, it gets the
 // entire path segment (including the last point) for the shortcut
-bool EGraphManager::reconstructDirectShortcuts(LazyARAState* state, 
+template <typename HeuristicType>
+bool EGraphManager<HeuristicType>::reconstructDirectShortcuts(LazyARAState* state, 
                                                   LazyARAState*& next_state, 
                                                   vector<int>* wholePathIds, 
                                                   vector<int>* costs,
@@ -427,7 +443,8 @@ bool EGraphManager::reconstructDirectShortcuts(LazyARAState* state,
 
 // this fills shortcuts in reverse. TODO this probably dosen't work with
 // backwarsd search
-void EGraphManager::fillInDirectShortcut (int parent_id, int shortcut_id,
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::fillInDirectShortcut (int parent_id, int shortcut_id,
                                           vector<int>* wholePathIds, 
                                           vector<int>* costs, 
                                           int& shortcut_count){
@@ -464,7 +481,8 @@ void EGraphManager::fillInDirectShortcut (int parent_id, int shortcut_id,
     //assert(costs->size() == wholePathIds->size()-1);
 }
 
-void EGraphManager::storeLastPath(const std::vector<int>& path, 
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::storeLastPath(const std::vector<int>& path, 
                                   const std::vector<int>& costs){
     EGraphPath full_path;
     assert(path.size()-1 == costs.size());
@@ -481,7 +499,8 @@ void EGraphManager::storeLastPath(const std::vector<int>& path,
 // given a start and end id, we get all the egraph vertices in between (with
 // start and end also included). the assumption here is that start and end are
 // on the same component. getShortestPath will break if this is not the case
-vector<int> EGraphManager::getDirectShortcutStateIDs(int start_id, int end_id,
+template <typename HeuristicType>
+vector<int> EGraphManager<HeuristicType>::getDirectShortcutStateIDs(int start_id, int end_id,
                                                      vector<int>* costs){
     DiscState disc_start = getDiscStateFromID(start_id);
     DiscState disc_end = getDiscStateFromID(end_id);
@@ -503,7 +522,8 @@ vector<int> EGraphManager::getDirectShortcutStateIDs(int start_id, int end_id,
     return ids;
 }
 
-bool EGraphManager::reconstructSnap(LazyARAState* state, 
+template <typename HeuristicType>
+bool EGraphManager<HeuristicType>::reconstructSnap(LazyARAState* state, 
                                     LazyARAState*& next_state, 
                                     vector<int>* wholePathIds, 
                                     vector<int>* costs){
@@ -538,7 +558,8 @@ bool EGraphManager::reconstructSnap(LazyARAState* state,
     return false;
 }
 
-bool EGraphManager::reconstructComboSnapShortcut(LazyARAState* successor_state, 
+template <typename HeuristicType>
+bool EGraphManager<HeuristicType>::reconstructComboSnapShortcut(LazyARAState* successor_state, 
                                                  LazyARAState*& next_state, 
                                                  vector<int>* wholePathIds, 
                                                  vector<int>* costs, 
@@ -579,7 +600,8 @@ bool EGraphManager::reconstructComboSnapShortcut(LazyARAState* successor_state,
     return true;
 }
 
-void EGraphManager::feedbackLastPath(){
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::feedbackLastPath(){
     double t0 = ros::Time::now().toSec();
     for(unsigned int i=0; i<egraph_->id2vertex.size(); i++){
         EGraph::EGraphVertex* v = egraph_->id2vertex[i];
@@ -615,14 +637,16 @@ void EGraphManager::feedbackLastPath(){
     stats_.precomp_time = 0;
 }
 
-void EGraphManager::printVector(vector<double>& state){
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::printVector(vector<double>& state){
     for (auto value : state){
         printf("%f ", value);
     }
     printf("\n");
 }
 
-void EGraphManager::printVector(vector<int>& state){
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::printVector(vector<int>& state){
     for (auto value : state){
         printf("%d ", value);
     }
@@ -632,7 +656,8 @@ void EGraphManager::printVector(vector<int>& state){
 
 // initializes egraph by computing components, setting up the heuristic (down
 // projecting, setting goal state) and resetting the shortcut cache.
-void EGraphManager::initEGraph(bool set_goal){
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::initEGraph(bool set_goal){
     // this order is important because precomputations uses the number of
     // components
     egraph_->computeComponents();
@@ -640,10 +665,9 @@ void EGraphManager::initEGraph(bool set_goal){
     egraph_heur_->runPrecomputations();
     stats_.precomp_time += static_cast<double>(clock()-time)/CLOCKS_PER_SEC;
 
-    ContState coord;
-    // retrieve discrete xyz of goal coord
     if (set_goal){
-        egraph_env_->getGoalHeuristicCoord(coord);
+        HeuristicType coord;
+        egraph_env_->projectGoalToHeuristicSpace(coord);
         egraph_heur_->setGoal(coord);
     }
 }
@@ -651,7 +675,8 @@ void EGraphManager::initEGraph(bool set_goal){
 // let's double check that we can transform between egraph vertices (continuous
 // values) back into discrete graph coordinates, and then back into continuous
 // values again
-void EGraphManager::errorCheckEGraphVertex(EGraph::EGraphVertex* egv){
+template <typename HeuristicType>
+void EGraphManager<HeuristicType>::errorCheckEGraphVertex(EGraph::EGraphVertex* egv){
     vector<double> eg_coord;
     egraph_->discToCont(egv,eg_coord);
     //printVector(egv->coord);

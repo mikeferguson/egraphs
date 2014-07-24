@@ -1,11 +1,10 @@
 #include<egraphs/egraph.h>
 #include<egraphs/egraphable.h>
-#include<egraphs/egraph_down_project.h>
 #include<egraphs/egraph_2d_grid_heuristic.h>
 #include<egraphs/egraph_planner.h>
 #include<sbpl/headers.h>
 
-class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
+class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable<vector<int> >{
     //requires a snap motion function between 2 coordinates. returns true if a transition exists (and then also fills out a cost and state id). 
     //this is used for snap motions as well as reading in demonstrations (so it's important for the environment to attempt to use motiom primitives first and then adaptive motions)
     virtual bool snap(const vector<double>& from, const vector<double>& to, int& id, int& cost){
@@ -40,27 +39,29 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
     virtual bool isValidVertex(const vector<double>& coord){
       return true;
     };
-};
 
-class myDownProject : public EGraphDownProject{
-  void downProject(const vector<double>& coord, vector<int>& dp){
+    void projectToHeuristicSpace(const vector<double>& coord, vector<int>& heur_coord) const{
 
-  };
+    };
+
+    void projectGoalToHeuristicSpace(vector<int>& heur_coord) const{
+
+    };
+
 };
 
 int main(int argc, char** argv){
   myEnv env;
-  myDownProject dp;
 
   vector<string> names;
   vector<double> min;
   vector<double> max;
   vector<double> res;
   EGraph eg(min,max,res,names,0);
-  EGraph2dGridHeuristic heur(&dp,100,100,1);
+  EGraph2dGridHeuristic heur(env,100,100,1);
 
-  EGraphManagerPtr egraph_mgr = new EGraphManager(&eg, &env, &heur);
-  LazyAEGPlanner aegplanner(&env,true,egraph_mgr);
+  EGraphManager<vector<int> > egraph_mgr(&eg, &env, &heur);
+  LazyAEGPlanner<vector<int> > aegplanner(&env,true,&egraph_mgr);
 
   sleep(2.0);
   return 0;

@@ -11,8 +11,6 @@
 #include <egraphs/planner_state.h>
 
 typedef EGraph* EGraphPtr;
-typedef EGraphable* EGraphablePtr;
-typedef EGraphHeuristic* EGraphHeuristicPtr;
 typedef std::vector<std::vector<double> > EGraphPath;
 typedef std::vector<int> EGraphCosts;
 typedef std::vector<double> ContState;
@@ -58,8 +56,12 @@ struct UpdateEGThreadData {
     bool planner_ok_;
 };
 
+template <typename HeuristicType>
 class EGraphManager {
     public:
+        typedef EGraphable<HeuristicType>* EGraphablePtr;
+        typedef EGraphHeuristic<HeuristicType>* EGraphHeuristicPtr;
+
         EGraphManager(EGraphPtr egraph, EGraphablePtr egraph_env, 
                       EGraphHeuristicPtr egraph_heur);
         bool setGoal(int goal_id);
@@ -145,3 +147,5 @@ class EGraphManager {
         EGraphStats stats_;
 
 };
+
+#include<egraphs/../../src/egraphManager.cpp>

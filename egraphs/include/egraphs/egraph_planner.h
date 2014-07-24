@@ -34,8 +34,6 @@
 #include <egraphs/egraphManager.h>
 #include <egraphs/planner_state.h>
 
-typedef EGraphManager* EGraphManagerPtr;
-
 //class LazyListElement;
 
 class EGraphReplanParams : public ReplanParams{
@@ -58,7 +56,9 @@ class EGraphReplanParams : public ReplanParams{
     bool validate_during_planning;
 };
 
+template <typename HeuristicType>
 class LazyAEGPlanner : public SBPLPlanner{
+    typedef EGraphManager<HeuristicType>* EGraphManagerPtr;
 
     public:
         virtual int replan(double allocated_time_secs, vector<int>* solution_stateIDs_V){
@@ -157,5 +157,7 @@ class LazyAEGPlanner : public SBPLPlanner{
         virtual bool Search(vector<int>& pathIds, int & PathCost);
 
 };
+
+#include<egraphs/../../src/egraph_planner.cpp>
 
 #endif

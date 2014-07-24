@@ -23,13 +23,14 @@ using namespace std;
 -an N-dimensional euclidean distance
 */
 
+template <typename HeuristicType>
 class EGraphHeuristic{
 
   public:
     //if the goal vector is empty it means to reuse the last goal
-    virtual void setGoal(const vector<double>& goal) = 0;
-    virtual int getHeuristic(const vector<double>& coord) = 0;
-    virtual void getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices) = 0;
+    virtual void setGoal(const HeuristicType& goal) = 0;
+    virtual int getHeuristic(const HeuristicType& coord) = 0;
+    virtual void getEGraphVerticesWithSameHeuristic(const HeuristicType& coord, vector<EGraph::EGraphVertex*>& vertices) = 0;
     virtual void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts){};
 
     virtual void runPrecomputations(){};
