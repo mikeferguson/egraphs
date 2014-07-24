@@ -29,7 +29,7 @@ EGraph2dGridHeuristic::EGraph2dGridHeuristic(EGraphDownProject* downProject, int
 
 }
 
-void EGraph2dGridHeuristic::setGrid(vector<vector<bool> >& grid){
+void EGraph2dGridHeuristic::setGrid(const vector<vector<bool> >& grid){
   if(grid.size() != (unsigned int)(sizex_)){
     ROS_ERROR("[EGraph2dGridHeuristic] The dimensions provided in the constructor don't match the given grid.");
     return;
@@ -65,7 +65,7 @@ void EGraph2dGridHeuristic::setGrid(vector<vector<bool> >& grid){
 */
 }
 
-void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices){
+void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   vertices.clear();
@@ -132,7 +132,7 @@ void EGraph2dGridHeuristic::resetShortcuts(){
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
-void EGraph2dGridHeuristic::setGoal(vector<double> goal){
+void EGraph2dGridHeuristic::setGoal(const vector<double>& goal){
   //ROS_ERROR("begin setGoal");
   //clear the heur data structure
   for(int i=0; i<planeSize_; i++){
@@ -190,7 +190,7 @@ void EGraph2dGridHeuristic::setGoal(vector<double> goal){
   }                                                                               \
 }
 
-int EGraph2dGridHeuristic::getHeuristic(vector<double> coord){
+int EGraph2dGridHeuristic::getHeuristic(const vector<double>& coord){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   EGraph2dGridHeuristicCell* cell = &heur[HEUR_XY2ID(dp[0],dp[1])];

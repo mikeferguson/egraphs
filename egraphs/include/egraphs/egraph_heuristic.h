@@ -27,9 +27,9 @@ class EGraphHeuristic{
 
   public:
     //if the goal vector is empty it means to reuse the last goal
-    virtual void setGoal(vector<double> goal) = 0;
-    virtual int getHeuristic(vector<double> coord) = 0;
-    virtual void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices) = 0;
+    virtual void setGoal(const vector<double>& goal) = 0;
+    virtual int getHeuristic(const vector<double>& coord) = 0;
+    virtual void getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices) = 0;
     virtual void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts){};
 
     virtual void runPrecomputations(){};
@@ -42,8 +42,6 @@ class EGraphHeuristic{
 
     virtual void setEpsE(double e){
       epsE_ = e;
-      //vector<double> dummy_goal;
-      //setGoal(dummy_goal);
     };
 
   protected:

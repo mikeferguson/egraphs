@@ -32,7 +32,7 @@ EGraph3dGridHeuristic::EGraph3dGridHeuristic(EGraphDownProject* downProject, int
 
 }
 
-void EGraph3dGridHeuristic::setGrid(vector<vector<vector<bool> > >& grid){
+void EGraph3dGridHeuristic::setGrid(const vector<vector<vector<bool> > >& grid){
   if(grid.size() != (unsigned int)(sizex_) ||
      grid.front().size() != (unsigned int)(sizey_) ||
      grid.front().front().size() != (unsigned int)(sizez_)){
@@ -58,7 +58,7 @@ void EGraph3dGridHeuristic::setGrid(vector<vector<vector<bool> > >& grid){
 
 }
 
-void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices){
+void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   vertices.clear();
@@ -129,7 +129,7 @@ void EGraph3dGridHeuristic::resetShortcuts(){
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
-void EGraph3dGridHeuristic::setGoal(vector<double> goal){
+void EGraph3dGridHeuristic::setGoal(const vector<double>& goal){
   //ROS_ERROR("begin setGoal");
   //clear the heur data structure
   for(int i=0; i<gridSize_; i++){
@@ -188,7 +188,7 @@ void EGraph3dGridHeuristic::setGoal(vector<double> goal){
   }                                                                               \
 }
 
-int EGraph3dGridHeuristic::getHeuristic(vector<double> coord){
+int EGraph3dGridHeuristic::getHeuristic(const vector<double>& coord){
   vector<int> dp;
   downProject_->downProject(coord,dp);
   EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];

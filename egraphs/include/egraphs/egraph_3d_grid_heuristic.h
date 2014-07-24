@@ -3,8 +3,8 @@
 
 #include<egraphs/egraph_heuristic.h>
 #include<egraphs/egraph.h>
-#include<egraphs/egraph_down_project.h>
 #include<sbpl/headers.h>
+#include<egraphs/egraph_down_project.h>
 #include <map>
 
 /*
@@ -20,10 +20,10 @@
 class EGraph3dGridHeuristic : public EGraphHeuristic{
   public:
     EGraph3dGridHeuristic(EGraphDownProject* downProject, int size_x, int size_y, int size_z, int move_cost);
-    void setGrid(vector<vector<vector<bool> > >& grid);
-    void setGoal(vector<double> goal);
-    int getHeuristic(vector<double> coord);
-    void getEGraphVerticesWithSameHeuristic(vector<double> coord, vector<EGraph::EGraphVertex*>& vertices);
+    void setGrid(const vector<vector<vector<bool> > >& grid);
+    void setGoal(const vector<double>& goal);
+    int getHeuristic(const vector<double>& coord);
+    void getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices);
     void runPrecomputations();
     void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts);
     virtual void resetShortcuts();

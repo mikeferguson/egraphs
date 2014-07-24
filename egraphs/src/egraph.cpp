@@ -420,7 +420,32 @@ void EGraph::prune(int max_size, int method){
   computeComponents();
 }
 
-bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
+bool EGraph::addPaths(const vector<vector<vector<double> > >& paths, const vector<vector<int> >& path_costs){
+  if(paths.size() != path_costs.size()){
+    ROS_ERROR("The number of paths must be the same as the number of path cost vectors");
+    return false;
+  }
+
+  for(unsigned int i=0; i<paths.size(); i++)
+    addPathHelper(paths[i],path_costs[i]);
+
+  computeComponents();
+
+  ROS_INFO("[EGraph] addPaths complete. EGraph now contains %d vertices",int(id2vertex.size()));
+  return true;
+}
+
+bool EGraph::addPath(const vector<vector<double> >& coords, const vector<int>& costs){
+  if(!addPathHelper(coords, costs))
+    return false;
+
+  computeComponents();
+
+  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
+  return true;
+}
+
+bool EGraph::addPathHelper(const vector<vector<double> >& coords, const vector<int>& costs){
   boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
   //error checking
   if(coords.size() < 2){
@@ -431,14 +456,6 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
     ROS_ERROR("[EGraph] When giving a path to the E-Graph, it should have one less cost than it has coordinates");
     return false;
   }
-  /*
-  for(unsigned int i=0; i<names_.size(); i++){
-    if(names_[i].compare(names[i]) != 0){
-      ROS_ERROR("[EGraph] The given path has a different coordinate format than how this E-Graph was initialized!");
-      return false;
-    }
-  }
-  */
   
   //convert continuous coordinates to discrete ones
   vector<vector<int> > disc_coords;
@@ -473,9 +490,6 @@ bool EGraph::addPath(vector<vector<double> >& coords, vector<int>& costs){
     addEdge(path_vertices[i-1],path_vertices[i],costs[i-1]);
   }
 
-  computeComponents();
-
-  ROS_INFO("[EGraph] addPath complete. EGraph now contains %d vertices",int(id2vertex.size()));
   return true;
 }
 
@@ -799,6 +813,15 @@ void EGraph::updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost
       v2->costs[i] = cost;
     }
   }
+}
+
+void EGraph::updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid){
+  for(unsigned int i=0; i<v1->neighbors.size(); i++)
+    if(v1->neighbors[i]==v2)
+      v1->valid[i] = valid;
+  for(unsigned int i=0; i<v2->neighbors.size(); i++)
+    if(v2->neighbors[i]==v1)
+      v2->valid[i] = valid;
 }
 
 void EGraph::invalidateVertex(EGraphVertex* v1){

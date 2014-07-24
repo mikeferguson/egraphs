@@ -1,14 +1,14 @@
 #include<egraphs/egraph.h>
-#include<egraphs/egraph_down_project.h>
 #include<egraphs/egraphable.h>
+#include<egraphs/egraph_down_project.h>
 #include<egraphs/egraph_2d_grid_heuristic.h>
-#include<egraphs/anytime_egraph_planner.h>
+#include<egraphs/egraph_planner.h>
 #include<sbpl/headers.h>
 
 class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
     //requires a snap motion function between 2 coordinates. returns true if a transition exists (and then also fills out a cost and state id). 
     //this is used for snap motions as well as reading in demonstrations (so it's important for the environment to attempt to use motiom primitives first and then adaptive motions)
-    virtual bool snap(vector<double> from, vector<double> to, int& id, int& cost){
+    virtual bool snap(const vector<double>& from, const vector<double>& to, int& id, int& cost){
       return false;
     };
 
@@ -21,7 +21,7 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
     virtual void getGoalHeuristicCoord(vector<double>& coord){
     };
 
-    virtual bool getGoalCoord(vector<double>& parent, vector<double>& goal){
+    virtual bool getGoalCoord(const vector<double>& parent, vector<double>& goal){
       return true;
     };
 
@@ -29,21 +29,21 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable{
       return false;
     };
 
-    virtual int getStateID(vector<double>& coord){
+    virtual int getStateID(const vector<double>& coord){
       return 0;
     };
 
-    virtual bool isValidEdge(vector<double>& coord, vector<double>& coord2, int& cost){
+    virtual bool isValidEdge(const vector<double>& coord, const vector<double>& coord2, bool& change_cost, int& cost){
       return true;
     };
 
-    virtual bool isValidVertex(vector<double>& coord){
+    virtual bool isValidVertex(const vector<double>& coord){
       return true;
     };
 };
 
 class myDownProject : public EGraphDownProject{
-  void downProject(vector<double> coord, vector<int>& dp){
+  void downProject(const vector<double>& coord, vector<int>& dp){
 
   };
 };
@@ -59,8 +59,8 @@ int main(int argc, char** argv){
   EGraph eg(min,max,res,names,0);
   EGraph2dGridHeuristic heur(&dp,100,100,1);
 
-  AnytimeEGraphPlanner aegplanner(&env,true);
-  aegplanner.initializeEGraph(&eg,&env,&heur);
+  EGraphManagerPtr egraph_mgr = new EGraphManager(&eg, &env, &heur);
+  LazyAEGPlanner aegplanner(&env,true,egraph_mgr);
 
   sleep(2.0);
   return 0;

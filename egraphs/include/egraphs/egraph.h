@@ -76,7 +76,9 @@ class EGraph{
     //no longer computes all-pairs! this simplifies the e-graph data structure and drops computation between queries to almost nothing. 
     //no longer needs to compute components!
     //finally this will call setEGraph on the EGraphable's EGraphHeuristic to prepare it for the next query
-    bool addPath(vector<vector<double> >& coords, vector<int>& costs);
+    bool addPaths(const vector<vector<vector<double> > >& coords, const vector<vector<int> >& costs);
+    bool addPath(const vector<vector<double> >& coords, const vector<int>& costs);
+    bool addPathHelper(const vector<vector<double> >& coords, const vector<int>& costs);
 
     int getNumComponents(){return num_components_;};
     void computeComponents();
@@ -97,6 +99,7 @@ class EGraph{
     void prune(int max_size, int method);
     void setClusterRadius(double r){cluster_radius_ = r;};
 
+    void updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid);
     void updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost);
     void invalidateVertex(EGraphVertex* v1);
 
