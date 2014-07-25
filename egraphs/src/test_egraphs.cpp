@@ -4,7 +4,7 @@
 #include<egraphs/egraph_planner.h>
 #include<sbpl/headers.h>
 
-class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable<vector<int> >{
+class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable<vector<int> >, public EGraphDiscretize{
     //requires a snap motion function between 2 coordinates. returns true if a transition exists (and then also fills out a cost and state id). 
     //this is used for snap motions as well as reading in demonstrations (so it's important for the environment to attempt to use motiom primitives first and then adaptive motions)
     virtual bool snap(const vector<double>& from, const vector<double>& to, int& id, int& cost){
@@ -48,16 +48,20 @@ class myEnv : public EnvironmentNAVXYTHETALAT, public EGraphable<vector<int> >{
 
     };
 
+    void discToCont(const vector<int>& d, vector<double>& c){
+
+    };
+
+    void contToDisc(const vector<double>& c, vector<int>& d){
+
+    };
+
 };
 
 int main(int argc, char** argv){
   myEnv env;
 
-  vector<string> names;
-  vector<double> min;
-  vector<double> max;
-  vector<double> res;
-  EGraph eg(min,max,res,names,0);
+  EGraph eg(&env,0,0);
   EGraph2dGridHeuristic heur(env,100,100,1);
 
   EGraphManager<vector<int> > egraph_mgr(&eg, &env, &heur);

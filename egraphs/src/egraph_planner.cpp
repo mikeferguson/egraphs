@@ -110,7 +110,7 @@ void LazyAEGPlanner<HeuristicType>::ExpandState(LazyARAState* parent){
     //egraph_mgr_->clearSnapSuccessorsCache();
 
     //egraph_mgr_->getSnapSuccessors(parent->id, &children, &costs, &isTrueCost, &edgeTypes);
-    //egraph_mgr_->getDirectShortcutSuccessors(parent->id, &children, &costs, &isTrueCost, &edgeTypes);
+    egraph_mgr_->getDirectShortcutSuccessors(parent->id, &children, &costs, &isTrueCost, &edgeTypes);
 
     snap_midpoints.resize(children.size(),-1);
     egraph_mgr_->getSnapShortcuts(parent->id, &children, &costs, &isTrueCost, &edgeTypes, &snap_midpoints);

@@ -3,11 +3,9 @@
 //TODO: This is an arbitrary size...
 #define ARBITRARY_HASH_TABLE_SIZE 32*1024
 
-EGraph::EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names, int num_constants){
-  min_ = min;
-  max_ = max;
-  res_ = resolution;
-  names_ = names;
+EGraph::EGraph(EGraphDiscretize* eg_disc, int dimensions, int num_constants){
+  eg_disc_ = eg_disc;
+  num_dims_ = dimensions;
   num_constants_ = num_constants;
   num_edges_ = 0;
   num_components_ = 0;
@@ -34,10 +32,6 @@ EGraph::~EGraph(){
 
 void EGraph::clearEGraph(){
   boost::recursive_mutex::scoped_lock lock(egraph_mutex_);
-  min_.clear();
-  max_.clear();
-  res_.clear();
-  names_.clear();
   hashtable.clear();
   hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
 
@@ -46,15 +40,6 @@ void EGraph::clearEGraph(){
 
   id2vertex.clear();
   num_edges_ = 0;
-}
-
-void EGraph::addDimension(double min, double max, double res, string name, double initial_val){
-  min_.push_back(min);
-  max_.push_back(max);
-  res_.push_back(res);
-  names_.push_back(name);
-  for(unsigned int i=0; i<id2vertex.size(); i++)
-    id2vertex[i]->coord.push_back(round((initial_val-min)/res));
 }
 
 //recordStats
@@ -70,7 +55,7 @@ void EGraph::recordStats(vector<vector<double> >& coords){
   //convert continuous coordinates to discrete ones
   vector<vector<int> > disc_coords;
   for(unsigned int i=0; i<coords.size(); i++){
-    if(res_.size()+num_constants_ != coords[i].size()){
+    if(num_dims_+num_constants_ != int(coords[i].size())){
       ROS_ERROR("[EGraph] There is a coordinate in the path that doesn't have enough fields!");
       return;
     }
@@ -461,16 +446,16 @@ bool EGraph::addPathHelper(const vector<vector<double> >& coords, const vector<i
   vector<vector<int> > disc_coords;
   vector<vector<double> > constants;
   for(unsigned int i=0; i<coords.size(); i++){
-    if(res_.size()+num_constants_ != coords[i].size()){
+    if(num_dims_+num_constants_ != int(coords[i].size())){
       ROS_ERROR("[EGraph] There is a coordinate in the path that doesn't have enough fields!");
-      ROS_ERROR("[EGraph] Expecting %lu, got coordinate of size %lu", res_.size()+num_constants_, coords[i].size());
+      ROS_ERROR("[EGraph] Expecting %d, got coordinate of size %lu", num_dims_+num_constants_, coords[i].size());
       return false;
     }
     vector<int> dc;
     contToDisc(coords[i], dc);
     disc_coords.push_back(dc);
     vector<double> temp;
-    for(unsigned int j=res_.size(); j<coords[i].size(); j++)
+    for(unsigned int j=num_dims_; j<coords[i].size(); j++)
       temp.push_back(coords[i][j]);
     constants.push_back(temp);
   }
@@ -619,11 +604,8 @@ bool EGraph::save(string filename){
     return false;
   }
 
-  //save the dimension names, min, max, and resolution
-  //for each dimension there is a line with format: "name min max resolution"
-  fprintf(fout,"%d %d\n",int(names_.size()),num_constants_);
-  for(unsigned int i=0; i<names_.size(); i++)
-    fprintf(fout,"%s %f %f %f\n",names_[i].c_str(),min_[i],max_[i],res_[i]);
+  //write the number of dimensions and constants in the state
+  fprintf(fout,"%d %d\n",num_dims_,num_constants_);
 
   //save the id2vertex table
   //one line for each vertex
@@ -670,8 +652,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   }
 
   //read the number of dimensions
-  int num_dimensions;
-  if(fscanf(fin,"%d", &num_dimensions) != 1){
+  if(fscanf(fin,"%d", &num_dims_) != 1){
     ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...1",filename.c_str());
     fclose(fin);
     return false;
@@ -682,21 +663,6 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...2",filename.c_str());
     fclose(fin);
     return false;
-  }
-
-  //read in all the dimension details
-  char name[128];
-  double min,max,res;
-  for(int i=0; i<num_dimensions; i++){
-    if(fscanf(fin,"%s %lf %lf %lf",name,&min,&max,&res) != 4){
-      ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...3",filename.c_str());
-      fclose(fin);
-      return false;
-    }
-    names_.push_back(name);
-    min_.push_back(min);
-    max_.push_back(max);
-    res_.push_back(res);
   }
 
   //read in the number of vertices
@@ -720,7 +686,7 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
     //printf("1\n");
     double val;
     vector<double> coord;
-    for(int j=0; j<num_dimensions; j++){
+    for(int j=0; j<num_dims_; j++){
       if(fscanf(fin,"%lf",&val) != 1){
         ROS_ERROR("E-Graph file \"%s\" is formatted incorrectly...5",filename.c_str());
         fclose(fin);
@@ -850,7 +816,7 @@ unsigned int EGraph::inthash(unsigned int key){
 
 int EGraph::getHashBin(vector<int>& coord){
   int hash = 0;
-  for(unsigned int i=0; i<res_.size(); i++){
+  for(int i=0; i<num_dims_; i++){
     hash += inthash(coord[i])<<i;
   }
   return inthash(hash) & (hashtable.size()-1);
@@ -926,26 +892,22 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
 
 void EGraph::discToCont(EGraphVertex* v, vector<double>& c){
   c.clear();
-  for(unsigned int i=0; i<v->coord.size(); i++)
-    c.push_back(v->coord[i]*res_[i]+min_[i]);
+  eg_disc_->discToCont(v->coord,c);
+  //for(unsigned int i=0; i<v->coord.size(); i++)
+    //c.push_back(v->coord[i]*res_[i]+min_[i]);
   for(unsigned int i=0; i<v->constants.size(); i++)
     c.push_back(v->constants[i]);
 }
 
-double round(double r) {
-  return (r > 0.0) ? floor(r + 0.5) : ceil(r - 0.5);
-}
+//double round(double r) {
+  //return (r > 0.0) ? floor(r + 0.5) : ceil(r - 0.5);
+//}
 
 void EGraph::contToDisc(vector<double> c, vector<int>& d){
   d.clear();
-  for(unsigned int i=0; i<res_.size(); i++){
-    //printf("%f-%f=%f\n",c[i],min_[i],c[i]-min_[i]);
-    //printf("%f-%f)/%f=%f\n",c[i],min_[i],res_[i],(c[i]-min_[i])/(res_[i]));
-    //printf("round(%f-%f)/%f)=%d\n",c[i],min_[i],res_[i],round((c[i]-min_[i])/(res_[i])));
-    //d.push_back(int((c[i]-min_[i])/(res_[i])));
-    d.push_back(round((c[i]-min_[i])/(res_[i])));
-    //printf("huh.... %d\n",d.back());
-  }
+  eg_disc_->contToDisc(c,d);
+  //for(unsigned int i=0; i<res_.size(); i++)
+    //d.push_back(round((c[i]-min_[i])/(res_[i])));
 }
 
 

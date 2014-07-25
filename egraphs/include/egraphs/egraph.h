@@ -6,6 +6,7 @@
 #include<string>
 #include<boost/thread.hpp>
 #include<sbpl/headers.h>
+#include<egraphs/egraph_discretize.h>
 
 using namespace std;
 
@@ -57,7 +58,8 @@ class EGraph{
 
     //constructor takes 4 vectors (min,max,res,names) which tells me the number of dimensions, how many values they can have, and the dimension names
     //load can be called after this in order bring up a stored E-Graph with different parameters than those stored in the file
-    EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names, int num_constants);
+    //EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names, int num_constants);
+    EGraph(EGraphDiscretize* eg_disc, int dimensions, int num_constants);
 
     //another constructor takes an egraph file to load
     //this will load the E-Graph using the parameters (min,max,resolution,names) stored in the file
@@ -67,7 +69,7 @@ class EGraph{
 
     ~EGraph();
 
-    void addDimension(double min, double max, double res, string name, double initial_val);
+    //void addDimension(double min, double max, double res, string name, double initial_val);
 
     void clearEGraph();
 
@@ -124,14 +126,17 @@ class EGraph{
     //map<vector<double>,int> vertex2id;
     vector<vector<EGraphVertex*> > hashtable;
 
-    vector<double> min_;
-    vector<double> max_;
-    vector<double> res_;
-    vector<string> names_;
+    //vector<double> min_;
+    //vector<double> max_;
+    //vector<double> res_;
+    //vector<string> names_;
+    int num_dims_;
     int num_constants_;
     int num_edges_;
     int num_components_;
     double cluster_radius_;
+
+    EGraphDiscretize* eg_disc_;
 
     boost::recursive_mutex egraph_mutex_;
 };

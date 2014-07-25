@@ -31,7 +31,7 @@ class EGraphable{
 
     virtual void projectToHeuristicSpace(const vector<double>& coord, HeuristicType& heur_coord) const = 0;
     virtual void projectGoalToHeuristicSpace(HeuristicType& heur_coord) const = 0;
-    
+
 //typedef std::vector<std::pair<std::pair<std::vector<double>, std::vector<double> >, bool> > DisplayEdges;
 //    virtual void displayPath(const DisplayEdges& path) = 0;
 
