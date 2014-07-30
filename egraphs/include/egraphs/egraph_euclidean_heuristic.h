@@ -8,7 +8,8 @@
 
 class EGraphEuclideanHeuristic : public EGraphHeuristic<vector<double> >{
   public:
-    EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env);
+    EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, double distance_inflation);
+    EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, const vector<double>& element_diff_inflation);
     void setGoal(const vector<double>& goal);
     int getHeuristic(const vector<double>& coord);
     void getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices);
@@ -19,6 +20,8 @@ class EGraphEuclideanHeuristic : public EGraphHeuristic<vector<double> >{
   protected:
     CHeap heap;
 
+    double dist_inflation;
+    vector<double> inflation;
     std::vector<EGraph::EGraphVertex*> shortcut_cache_;
     const EGraphable<vector<double> >& env_;
     vector<double> goal_;
