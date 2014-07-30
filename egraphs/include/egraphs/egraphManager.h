@@ -64,7 +64,8 @@ class EGraphManager {
 
         EGraphManager(EGraphPtr egraph, EGraphablePtr egraph_env, 
                       EGraphHeuristicPtr egraph_heur);
-        bool setGoal(int goal_id);
+        void setEpsE(double epsE){egraph_heur_->setEpsE(epsE);};
+        bool setGoal();
         int getHeuristic(int state_id);
         void getSnapSuccessors(int stateID, vector<int>* SuccIDV, 
                                vector<int>* CostV, vector<bool>* isTrueCost, 

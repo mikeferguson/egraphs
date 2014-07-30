@@ -76,7 +76,7 @@ void EGraphManager<HeuristicType>::validateEGraph(bool update_egraph){
 
 // sets the goal id in the heuristic and also clears the snap cache 
 template <typename HeuristicType>
-bool EGraphManager<HeuristicType>::setGoal(int goal_id){
+bool EGraphManager<HeuristicType>::setGoal(){
     HeuristicType coord;
     egraph_env_->projectGoalToHeuristicSpace(coord);
     stats_.heuristic_computation_time  = 0;
@@ -266,7 +266,7 @@ void EGraphManager<HeuristicType>::getSnapShortcuts(int stateID,
     snap_midpoints->push_back(egraph_state_id);
     edgeTypes->push_back(EdgeType::SNAP_DIRECT_SHORTCUT);
 
-    ROS_INFO("snap-shortcut from %d to %d (through %d) with lazy cost %d\n",stateID,SuccIDV->back(),egraph_state_id,CostV->back());
+    ROS_INFO("snap-shortcut from %d to %d (through %d) with lazy cost %d",stateID,SuccIDV->back(),egraph_state_id,CostV->back());
   }
 }
 

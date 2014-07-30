@@ -70,12 +70,13 @@ class LazyAEGPlanner : public SBPLPlanner{
             return -1;
         };
 
-        virtual int replan(int start, int goal, vector<int>* solution_stateIDs_V, 
+        virtual int replan(int start, vector<int>* solution_stateIDs_V, 
                            EGraphReplanParams params, int* solcost);
         virtual int replan(std::vector<int>* solution_stateIDs_V, EGraphReplanParams params);
         virtual int replan(std::vector<int>* solution_stateIDs_V, EGraphReplanParams params, int* solcost);
 
-        virtual int set_goal(int goal_stateID);
+        virtual int set_goal(int goal_stateID){ROS_WARN("set_goal is not used. we assume the goal conditions have been set in the environment and use EGraphable::isGoal");return 1;};
+        virtual int set_goal();
         virtual int set_start(int start_stateID);
 
         virtual void costs_changed(StateChangeQuery const & stateChange){return;};
@@ -112,9 +113,9 @@ class LazyAEGPlanner : public SBPLPlanner{
         EGraphManagerPtr egraph_mgr_;
 
         bool bforwardsearch; //if true, then search proceeds forward, otherwise backward
-        LazyARAState* goal_state;
+        LazyARAState goal_state;
         LazyARAState* start_state;
-        int goal_state_id;
+        //int goal_state_id;
         int start_state_id;
 
         //search member variables
