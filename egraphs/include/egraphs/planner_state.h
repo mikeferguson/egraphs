@@ -3,11 +3,11 @@
 
 #include<queue>
 
-class LazyListElement;
+class LazyAEGListElement;
 
 enum EdgeType{NONE, NORMAL, SNAP, DIRECT_SHORTCUT, GRADIENT_SHORTCUT, SNAP_DIRECT_SHORTCUT, SNAP_GRADIENT_SHORTCUT};
 
-class LazyARAState: public AbstractSearchState{
+class LazyAEGState: public AbstractSearchState{
   public:
     int id;
     unsigned int v;
@@ -15,30 +15,30 @@ class LazyARAState: public AbstractSearchState{
     int h;
     short unsigned int iteration_closed;
     short unsigned int replan_number;
-    LazyARAState* best_parent;
-    LazyARAState* expanded_best_parent;
+    LazyAEGState* best_parent;
+    LazyAEGState* expanded_best_parent;
     EdgeType best_edge_type;
     EdgeType expanded_best_edge_type;
     int snap_midpoint;
     int expanded_snap_midpoint;
     bool in_incons;
-    priority_queue<LazyListElement> lazyList;
+    priority_queue<LazyAEGListElement> lazyList;
     bool isTrueCost;
 };
 
-class LazyListElement{
+class LazyAEGListElement{
   public:
-    LazyListElement(LazyARAState* p, int ec, bool itc, EdgeType et, int snap_mp){
+    LazyAEGListElement(LazyAEGState* p, int ec, bool itc, EdgeType et, int snap_mp){
       parent = p;
       edgeCost = ec;
       isTrueCost = itc;
       edgeType = et;
       snap_midpoint = snap_mp;
     }
-    bool operator< (const LazyListElement& other) const{
+    bool operator< (const LazyAEGListElement& other) const{
       return (parent->v + edgeCost > other.parent->v + other.edgeCost);
     }
-    LazyARAState* parent;
+    LazyAEGState* parent;
     int edgeCost;
     bool isTrueCost;
     EdgeType edgeType;

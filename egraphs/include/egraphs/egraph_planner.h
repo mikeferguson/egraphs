@@ -34,7 +34,7 @@
 #include <egraphs/egraphManager.h>
 #include <egraphs/planner_state.h>
 
-//class LazyListElement;
+//class LazyAEGListElement;
 
 class EGraphReplanParams : public ReplanParams{
   public:
@@ -106,15 +106,15 @@ class LazyAEGPlanner : public SBPLPlanner{
     protected:
         //data structures (open and incons lists)
         CHeap heap;
-        vector<LazyARAState*> incons;
-        vector<LazyARAState*> states;
+        vector<LazyAEGState*> incons;
+        vector<LazyAEGState*> states;
 
         EGraphReplanParams params;
         EGraphManagerPtr egraph_mgr_;
 
         bool bforwardsearch; //if true, then search proceeds forward, otherwise backward
-        LazyARAState goal_state;
-        LazyARAState* start_state;
+        LazyAEGState goal_state;
+        LazyAEGState* start_state;
         //int goal_state_id;
         int start_state_id;
 
@@ -137,16 +137,16 @@ class LazyAEGPlanner : public SBPLPlanner{
         int evaluated_snaps;
 
 
-        bool reconstructSuccs(LazyARAState* state, LazyARAState*& next_state, 
+        bool reconstructSuccs(LazyAEGState* state, LazyAEGState*& next_state, 
                               vector<int>* wholePathIds, vector<int>* costs);
 
-        virtual LazyARAState* GetState(int id);
-        virtual void ExpandState(LazyARAState* parent);
-        virtual void EvaluateState(LazyARAState* parent);
-        void getNextLazyElement(LazyARAState* state);
-        void insertLazyList(LazyARAState* state, LazyARAState* parent, int edgeCost, bool isTrueCost, EdgeType edgeType, int snap_midpoint);
-        void putStateInHeap(LazyARAState* state);
-        void updateGoal(LazyARAState* state);
+        virtual LazyAEGState* GetState(int id);
+        virtual void ExpandState(LazyAEGState* parent);
+        virtual void EvaluateState(LazyAEGState* parent);
+        void getNextLazyElement(LazyAEGState* state);
+        void insertLazyList(LazyAEGState* state, LazyAEGState* parent, int edgeCost, bool isTrueCost, EdgeType edgeType, int snap_midpoint);
+        void putStateInHeap(LazyAEGState* state);
+        void updateGoal(LazyAEGState* state);
 
         virtual int ImprovePath();
 

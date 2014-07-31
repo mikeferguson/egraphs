@@ -303,7 +303,7 @@ int EGraphManager<HeuristicType>::getSnapShortcutTrueCost(int parentID, int snap
 }
 
 template <typename HeuristicType>
-bool EGraphManager<HeuristicType>::reconstructSnapShortcut(LazyARAState* state, LazyARAState*& next_state,
+bool EGraphManager<HeuristicType>::reconstructSnapShortcut(LazyAEGState* state, LazyAEGState*& next_state,
                                             vector<int>* wholePathIds, vector<int>* costs,
                                             int& totalCost){
 
@@ -311,11 +311,11 @@ bool EGraphManager<HeuristicType>::reconstructSnapShortcut(LazyARAState* state, 
   //state->expanded_best_parent -> uses snap -> state->expanded_snap_midpoint (fake_snap_state) -> uses shortcut -> state
   //recall we are reconstructing in reverse so the shortcut happens before the snap
 
-  LazyARAState fake_snap_state;
+  LazyAEGState fake_snap_state;
   fake_snap_state.id = state->expanded_snap_midpoint;
   fake_snap_state.expanded_best_parent = state->expanded_best_parent;
 
-  LazyARAState state_reached_by_shortcut;
+  LazyAEGState state_reached_by_shortcut;
   state_reached_by_shortcut.id = state->id;
   state_reached_by_shortcut.expanded_best_parent = &fake_snap_state;
   int dummy_shortcut_count=0;
@@ -406,8 +406,8 @@ void EGraphManager<HeuristicType>::getDirectShortcutSuccessors(int source_state_
 // figures out if we've used a direct shortcut or not. if we have, it gets the
 // entire path segment (including the last point) for the shortcut
 template <typename HeuristicType>
-bool EGraphManager<HeuristicType>::reconstructDirectShortcuts(LazyARAState* state, 
-                                                  LazyARAState*& next_state, 
+bool EGraphManager<HeuristicType>::reconstructDirectShortcuts(LazyAEGState* state, 
+                                                  LazyAEGState*& next_state, 
                                                   vector<int>* wholePathIds, 
                                                   vector<int>* costs,
                                                   int& shortcut_count,
@@ -523,8 +523,8 @@ vector<int> EGraphManager<HeuristicType>::getDirectShortcutStateIDs(int start_id
 }
 
 template <typename HeuristicType>
-bool EGraphManager<HeuristicType>::reconstructSnap(LazyARAState* state, 
-                                    LazyARAState*& next_state, 
+bool EGraphManager<HeuristicType>::reconstructSnap(LazyAEGState* state, 
+                                    LazyAEGState*& next_state, 
                                     vector<int>* wholePathIds, 
                                     vector<int>* costs){
     vector<int> SuccIDV;
@@ -559,8 +559,8 @@ bool EGraphManager<HeuristicType>::reconstructSnap(LazyARAState* state,
 }
 
 template <typename HeuristicType>
-bool EGraphManager<HeuristicType>::reconstructComboSnapShortcut(LazyARAState* successor_state, 
-                                                 LazyARAState*& next_state, 
+bool EGraphManager<HeuristicType>::reconstructComboSnapShortcut(LazyAEGState* successor_state, 
+                                                 LazyAEGState*& next_state, 
                                                  vector<int>* wholePathIds, 
                                                  vector<int>* costs, 
                                                  int goal_id){

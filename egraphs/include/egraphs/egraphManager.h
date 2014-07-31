@@ -84,22 +84,22 @@ class EGraphManager {
                               vector<EdgeType>* edgeTypes,
                               vector<int>* snap_midpoints);
         int getSnapShortcutTrueCost(int parentID, int snap_midpoint, int childID);
-        bool reconstructSnapShortcut(LazyARAState* state, LazyARAState*& next_state,
+        bool reconstructSnapShortcut(LazyAEGState* state, LazyAEGState*& next_state,
                                      vector<int>* wholePathIds, vector<int>* costs,
                                      int& totalCost);
 
 
 
-        bool reconstructDirectShortcuts(LazyARAState* state, 
-                                           LazyARAState*& next_state, 
+        bool reconstructDirectShortcuts(LazyAEGState* state, 
+                                           LazyAEGState*& next_state, 
                                            vector<int>* wholePathIds, 
                                            vector<int>* costs, int& shortcut_count,
                                            int& totalCost);
 
-        bool reconstructSnap(LazyARAState* state, LazyARAState*& next_state, 
+        bool reconstructSnap(LazyAEGState* state, LazyAEGState*& next_state, 
                              vector<int>* wholePathIds, vector<int>* costs);
 
-        bool reconstructComboSnapShortcut(LazyARAState* state, LazyARAState*& next_state, 
+        bool reconstructComboSnapShortcut(LazyAEGState* state, LazyAEGState*& next_state, 
                                           vector<int>* wholePathIds, vector<int>* costs, 
                                           int goal_id);
 
