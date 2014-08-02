@@ -61,6 +61,8 @@ class LazyAEGPlanner : public SBPLPlanner{
     typedef EGraphManager<HeuristicType>* EGraphManagerPtr;
 
     public:
+        void interrupt();
+
         virtual int replan(double allocated_time_secs, vector<int>* solution_stateIDs_V){
             printf("Not supported. Use ReplanParams");
             return -1;
@@ -136,6 +138,7 @@ class LazyAEGPlanner : public SBPLPlanner{
 
         int evaluated_snaps;
 
+        bool interruptFlag;
 
         bool reconstructSuccs(LazyAEGState* state, LazyAEGState*& next_state, 
                               vector<int>* wholePathIds, vector<int>* costs);

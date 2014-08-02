@@ -539,6 +539,9 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
 
 template <typename HeuristicType>
 bool LazyAEGPlanner<HeuristicType>::outOfTime(){
+  //if the user has sent an interrupt signal we stop
+  if(interruptFlag)
+    return true;
   //if we are supposed to run until the first solution, then we are never out of time
   if(params.return_first_solution)
     return false;
@@ -708,6 +711,12 @@ void LazyAEGPlanner<HeuristicType>::prepareNextSearchIteration(){
 
 
 //-----------------------------Interface function-----------------------------------------------------
+
+template <typename HeuristicType>
+void LazyAEGPlanner<HeuristicType>::interrupt(){
+  interruptFlag = true;
+}
+
 template <typename HeuristicType>
 int LazyAEGPlanner<HeuristicType>::replan(vector<int>* solution_stateIDs_V, EGraphReplanParams p){
   int solcost;
@@ -726,6 +735,7 @@ int LazyAEGPlanner<HeuristicType>::replan(vector<int>* solution_stateIDs_V, EGra
   printf("planner: replan called\n");
   params = p;
   use_repair_time = params.repair_time >= 0;
+  interruptFlag = false;
 
   egraph_mgr_->setEpsE(p.epsE);
   set_goal();
