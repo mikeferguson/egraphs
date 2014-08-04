@@ -16,8 +16,17 @@ class EGraphEuclideanHeuristic : public EGraphHeuristic<vector<double> >{
     void runPrecomputations();
     void getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts);
     void resetShortcuts();
+    inline int euclideanDistance(const vector<double>& c1, const vector<double>& c2);
 
   protected:
+
+    class EGraphEuclideanState : public AbstractSearchState{
+      public:
+        int id;
+        int g;
+        vector<double> coord;
+    };
+
     CHeap heap;
 
     double dist_inflation;
@@ -25,6 +34,8 @@ class EGraphEuclideanHeuristic : public EGraphHeuristic<vector<double> >{
     std::vector<EGraph::EGraphVertex*> shortcut_cache_;
     const EGraphable<vector<double> >& env_;
     vector<double> goal_;
+
+    vector<EGraphEuclideanState> verts;
 };
 
 #endif
