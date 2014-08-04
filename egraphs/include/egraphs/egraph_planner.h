@@ -100,6 +100,7 @@ class LazyAEGPlanner : public SBPLPlanner{
                        EGraphManagerPtr egraph_mgr);
         ~LazyAEGPlanner(){};
 
+        map<string,double> getStats(){return stat_map_;};
         virtual void get_search_stats(vector<PlannerStats>* s);
         void feedback_last_path();
         void setLazyValidation(bool b){ params.use_lazy_validation = b; };
@@ -130,6 +131,7 @@ class LazyAEGPlanner : public SBPLPlanner{
         bool use_repair_time;
 
         //stats
+        map<string,double> stat_map_;
         vector<PlannerStats> stats;
         unsigned int totalExpands;
         double totalPlanTime;
