@@ -8,6 +8,8 @@ EGraph2dGridHeuristic::EGraph2dGridHeuristic(const EGraphable<vector<int> >& env
   sizey_ = size_y;
   cost_1_move_ = move_cost;
 
+  iteration_ = 0;
+
   width_ = sizex_ + 2;
   height_ = sizey_ + 2;
   planeSize_ = width_ * height_;
@@ -26,7 +28,10 @@ EGraph2dGridHeuristic::EGraph2dGridHeuristic(const EGraphable<vector<int> >& env
       sc[i].cost = INFINITECOST;
     }
   }
-
+  for(int i=0; i<planeSize_; i++){
+    heur[i].id = i;
+    sc[i].id = i;
+  }
 }
 
 void EGraph2dGridHeuristic::setGrid(const vector<vector<bool> >& grid){
@@ -116,7 +121,7 @@ void EGraph2dGridHeuristic::resetShortcuts(){
   for(int i=0; i<planeSize_; i++){
     sc[i].id = i;
     sc[i].heapindex = 0;
-    sc[i].closed = false;
+    sc[i].closed_iteration--;
     if(sc[i].cost!=-1)
       sc[i].cost = INFINITECOST;
   }
@@ -132,6 +137,8 @@ void EGraph2dGridHeuristic::resetShortcuts(){
 
 void EGraph2dGridHeuristic::setGoal(const vector<int>& goal){
   //ROS_ERROR("begin setGoal");
+  iteration_++;
+  /*
   //clear the heur data structure
   for(int i=0; i<planeSize_; i++){
     heur[i].id = i;
@@ -147,6 +154,7 @@ void EGraph2dGridHeuristic::setGoal(const vector<int>& goal){
     if(sc[i].cost!=-1)
       sc[i].cost = INFINITECOST;
   }
+  */
   
   vector<int> dp;
   if(goal.empty()){
@@ -160,28 +168,38 @@ void EGraph2dGridHeuristic::setGoal(const vector<int>& goal){
   key.key[0] = 0;
   heap.makeemptyheap();
   int id = HEUR_XY2ID(dp[0],dp[1]);
-  heap.insertheap(&heur[id],key);
   heur[id].cost = 0;
+  heur[id].heapindex = 0;
+  heur[id].open_iteration = iteration_;
+  heap.insertheap(&heur[id],key);
 
   sc_heap.makeemptyheap();
   id = HEUR_XY2ID(dp[0],dp[1]);
-  sc_heap.insertheap(&sc[id],key);
   sc[id].cost = 0;
+  sc[id].heapindex = 0;
+  sc[id].open_iteration = iteration_;
+  sc_heap.insertheap(&sc[id],key);
 
   inflated_cost_1_move_ = cost_1_move_ * epsE_;
   shortcut_cache_.clear();
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
-#define HEUR_SUCCESSOR(offset){                                                   \
-  if(heur[id + (offset)].cost != -1 && (heur[id + (offset)].cost > currentCost)){ \
-    if(heur[id + (offset)].heapindex != 0)                                        \
-      heap.updateheap(&heur[id + (offset)],key);                                  \
-    else                                                                          \
-      heap.insertheap(&heur[id + (offset)],key);                                  \
-    heur[id + (offset)].cost = currentCost;                                       \
-  }                                                                               \
+#define HEUR_SUCCESSOR(offset){                           \
+  if(heur[id + (offset)].cost != -1){                     \
+    if(heur[id + (offset)].open_iteration != iteration_){ \
+      heur[id + (offset)].open_iteration = iteration_;    \
+      heur[id + (offset)].cost = currentCost;             \
+      heur[id + (offset)].heapindex = 0;                  \
+      heap.insertheap(&heur[id + (offset)],key);          \
+    }                                                     \
+    else if((heur[id + (offset)].cost > currentCost)){    \
+      heap.updateheap(&heur[id + (offset)],key);          \
+      heur[id + (offset)].cost = currentCost;             \
+    }                                                     \
+  }                                                       \
 }
+
 
 int EGraph2dGridHeuristic::getHeuristic(const vector<int>& coord){
   if(coord[0] > sizex_ || coord[1] > sizey_){
@@ -198,10 +216,10 @@ int EGraph2dGridHeuristic::getHeuristic(const vector<int>& coord){
   vector<int> dp(2,0);
   CKey key;
   //compute distance from H to all cells and note for each cell, what node in H was the closest
-  while(!heap.emptyheap() && !cell->closed){
+  while(!heap.emptyheap() && cell->closed_iteration != iteration_){
     EGraph2dGridHeuristicCell* state = (EGraph2dGridHeuristicCell*)heap.deleteminheap();
     int id = state->id;
-    state->closed = true;
+    state->closed_iteration = iteration_;
     int oldCost = state->cost;
     int currentCost = oldCost + inflated_cost_1_move_;
     key.key[0] = currentCost;
@@ -224,13 +242,17 @@ int EGraph2dGridHeuristic::getHeuristic(const vector<int>& coord){
         env_.projectToHeuristicSpace(c_coord,dp);
         EGraph2dGridHeuristicCell* cell = &heur[HEUR_XY2ID(dp[0],dp[1])];
         int newCost = oldCost + state->egraph_vertices[i]->costs[j];
-        if(cell->cost > newCost){ //if we found a cheaper path to it
-          key.key[0] = newCost;
-          if(cell->heapindex != 0)
-            heap.updateheap(cell,key);
-          else
-            heap.insertheap(cell,key);
+        if(cell->open_iteration != iteration_){ 
+          cell->open_iteration = iteration_;
           cell->cost = newCost;
+          cell->heapindex = 0;
+          key.key[0] = newCost;
+          heap.insertheap(cell,key);
+        }                                                     
+        else if(cell->cost > newCost){
+          cell->cost = newCost;
+          key.key[0] = newCost;
+          heap.updateheap(cell,key);
         }
       }
     }
@@ -238,15 +260,19 @@ int EGraph2dGridHeuristic::getHeuristic(const vector<int>& coord){
   return cell->cost;
 }
 
-// IF IT IS NOT AN OBSTACLE, PUT IN THE HEAP
-#define SHORTCUT_SUCCESSOR(offset){               \
-  if(sc[id + (offset)].cost != -1 && (sc[id + (offset)].cost > currentCost)){\
-    if(sc[id + (offset)].heapindex != 0)          \
-      sc_heap.updateheap(&sc[id + (offset)],key); \
-    else                                          \
-      sc_heap.insertheap(&sc[id + (offset)],key); \
-    sc[id + (offset)].cost = currentCost;         \
-  }                                               \
+#define SHORTCUT_SUCCESSOR(offset){                     \
+  if(sc[id + (offset)].cost != -1){                     \
+    if(sc[id + (offset)].open_iteration != iteration_){ \
+      sc[id + (offset)].open_iteration = iteration_;    \
+      sc[id + (offset)].cost = currentCost;             \
+      sc[id + (offset)].heapindex = 0;                  \
+      sc_heap.insertheap(&sc[id + (offset)],key);       \
+    }                                                   \
+    else if((sc[id + (offset)].cost > currentCost)){    \
+      sc_heap.updateheap(&sc[id + (offset)],key);       \
+      sc[id + (offset)].cost = currentCost;             \
+    }                                                   \
+  }                                                     \
 }
 
 // 2d breadth first search from goal to all other states until desired component
@@ -271,7 +297,7 @@ void EGraph2dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
   while(!sc_heap.emptyheap() && shortcuts.empty()){
     EGraph2dGridHeuristicCell* state = (EGraph2dGridHeuristicCell*)sc_heap.deleteminheap();
     int id = state->id;
-    state->closed = true;
+    state->closed_iteration = iteration_;
     int oldCost = state->cost;
     int currentCost = oldCost + inflated_cost_1_move_;
     key.key[0] = currentCost;

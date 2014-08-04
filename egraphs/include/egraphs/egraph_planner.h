@@ -132,9 +132,13 @@ class LazyAEGPlanner : public SBPLPlanner{
         //stats
         vector<PlannerStats> stats;
         unsigned int totalExpands;
-        double totalTime;
         double totalPlanTime;
         double reconstructTime;
+        double feedbackPathTime;
+        double heuristicSetGoalTime;
+        clock_t succsClock;
+        clock_t shortcutClock;
+        clock_t heuristicClock;
 
         int evaluated_snaps;
 

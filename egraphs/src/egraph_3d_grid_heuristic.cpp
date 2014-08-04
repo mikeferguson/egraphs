@@ -10,6 +10,8 @@ EGraph3dGridHeuristic::EGraph3dGridHeuristic(const EGraphable<vector<int> >& env
   sizez_ = size_z;
   cost_1_move_ = move_cost;
 
+  iteration_ = 0;
+
   width_ = sizex_ + 2;
   height_ = sizey_ + 2;
   length_ = sizez_ + 2;
@@ -30,7 +32,10 @@ EGraph3dGridHeuristic::EGraph3dGridHeuristic(const EGraphable<vector<int> >& env
       sc[i].cost = INFINITECOST;
     }
   }
-
+  for(int i=0; i<gridSize_; i++){
+    heur[i].id = i;
+    sc[i].id = i;
+  }
 }
 
 void EGraph3dGridHeuristic::setGrid(const vector<vector<vector<bool> > >& grid){
@@ -68,7 +73,7 @@ void EGraph3dGridHeuristic::getEGraphVerticesWithSameHeuristic(const vector<int>
 void EGraph3dGridHeuristic::runPrecomputations(){
   //ROS_INFO("begin precomputations");
   //refill the cell to egraph vertex mapping
-  clock_t time = clock();
+  //clock_t time = clock();
   for(int i=0; i<gridSize_; i++){
     heur[i].egraph_vertices.clear();
     sc[i].egraph_vertices.clear();
@@ -79,7 +84,7 @@ void EGraph3dGridHeuristic::runPrecomputations(){
   empty_components_.resize(eg_->getNumComponents(), false);
   vector<int> dp;
   vector<double> c_coord;
-  ROS_INFO("down project edges...");
+  //ROS_INFO("down project edges...");
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     bool valid = false;
     for(unsigned int a=0; a<eg_->id2vertex[i]->valid.size(); a++)
@@ -106,15 +111,16 @@ void EGraph3dGridHeuristic::runPrecomputations(){
   }
   shortcut_cache_.clear();
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
-  ROS_INFO("precomp time took %f", double(time-clock())/CLOCKS_PER_SEC);
+  //ROS_INFO("precomp time took %f", double(clock()-time)/CLOCKS_PER_SEC);
   //ROS_INFO("done precomputations");
 }
 
 void EGraph3dGridHeuristic::resetShortcuts(){
+  //ROS_ERROR("begin resetShortcuts");
   for(int i=0; i<gridSize_; i++){
     sc[i].id = i;
     sc[i].heapindex = 0;
-    sc[i].closed = false;
+    sc[i].closed_iteration--;
     if(sc[i].cost!=-1)
       sc[i].cost = INFINITECOST;
   }
@@ -130,7 +136,10 @@ void EGraph3dGridHeuristic::resetShortcuts(){
 
 void EGraph3dGridHeuristic::setGoal(const vector<int>& goal){
   //ROS_ERROR("begin setGoal");
+  iteration_++;
+  /*
   //clear the heur data structure
+  clock_t t0 = clock();
   for(int i=0; i<gridSize_; i++){
     heur[i].id = i;
     heur[i].heapindex = 0;
@@ -138,6 +147,8 @@ void EGraph3dGridHeuristic::setGoal(const vector<int>& goal){
     if(heur[i].cost!=-1)
       heur[i].cost = INFINITECOST;
   }
+  printf("clear heur grid %f\n",double(clock()-t0)/CLOCKS_PER_SEC);
+  t0 = clock();
   for(int i=0; i<gridSize_; i++){
     sc[i].id = i;
     sc[i].heapindex = 0;
@@ -145,6 +156,8 @@ void EGraph3dGridHeuristic::setGoal(const vector<int>& goal){
     if(sc[i].cost!=-1)
       sc[i].cost = INFINITECOST;
   }
+  printf("clear sc grid %f\n",double(clock()-t0)/CLOCKS_PER_SEC);
+  */
   
   vector<int> dp;
   if(goal.empty()){
@@ -158,27 +171,36 @@ void EGraph3dGridHeuristic::setGoal(const vector<int>& goal){
   key.key[0] = 0;
   heap.makeemptyheap();
   int id = HEUR_XYZ2ID(dp[0],dp[1],dp[2]);
-  heap.insertheap(&heur[id],key);
   heur[id].cost = 0;
+  heur[id].heapindex = 0;
+  heur[id].open_iteration = iteration_;
+  heap.insertheap(&heur[id],key);
 
   sc_heap.makeemptyheap();
   id = HEUR_XYZ2ID(dp[0],dp[1],dp[2]);
-  sc_heap.insertheap(&sc[id],key);
   sc[id].cost = 0;
+  sc[id].heapindex = 0;
+  sc[id].open_iteration = iteration_;
+  sc_heap.insertheap(&sc[id],key);
 
   inflated_cost_1_move_ = cost_1_move_ * epsE_;
   shortcut_cache_.clear();
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
 }
 
-#define HEUR_SUCCESSOR(offset){                                                   \
-  if(heur[id + (offset)].cost != -1 && (heur[id + (offset)].cost > currentCost)){ \
-    if(heur[id + (offset)].heapindex != 0)                                        \
-      heap.updateheap(&heur[id + (offset)],key);                                  \
-    else                                                                          \
-      heap.insertheap(&heur[id + (offset)],key);                                  \
-    heur[id + (offset)].cost = currentCost;                                       \
-  }                                                                               \
+#define HEUR_SUCCESSOR(offset){                           \
+  if(heur[id + (offset)].cost != -1){                     \
+    if(heur[id + (offset)].open_iteration != iteration_){ \
+      heur[id + (offset)].open_iteration = iteration_;    \
+      heur[id + (offset)].cost = currentCost;             \
+      heur[id + (offset)].heapindex = 0;                  \
+      heap.insertheap(&heur[id + (offset)],key);          \
+    }                                                     \
+    else if((heur[id + (offset)].cost > currentCost)){    \
+      heap.updateheap(&heur[id + (offset)],key);          \
+      heur[id + (offset)].cost = currentCost;             \
+    }                                                     \
+  }                                                       \
 }
 
 int EGraph3dGridHeuristic::getHeuristic(const vector<int>& coord){
@@ -198,10 +220,10 @@ int EGraph3dGridHeuristic::getHeuristic(const vector<int>& coord){
   vector<int> dp(3,0);
   CKey key;
   //compute distance from H to all cells and note for each cell, what node in H was the closest
-  while(!heap.emptyheap() && !cell->closed){
+  while(!heap.emptyheap() && cell->closed_iteration != iteration_){
     EGraph3dGridHeuristicCell* state = (EGraph3dGridHeuristicCell*)heap.deleteminheap();
     int id = state->id;
-    state->closed = true;
+    state->closed_iteration = iteration_;
     int oldCost = state->cost;
     int currentCost = oldCost + inflated_cost_1_move_;
     key.key[0] = currentCost;
@@ -242,13 +264,17 @@ int EGraph3dGridHeuristic::getHeuristic(const vector<int>& coord){
         env_.projectToHeuristicSpace(c_coord,dp);
         EGraph3dGridHeuristicCell* cell = &heur[HEUR_XYZ2ID(dp[0],dp[1],dp[2])];
         int newCost = oldCost + state->egraph_vertices[i]->costs[j];
-        if(cell->cost > newCost){ //if we found a cheaper path to it
-          key.key[0] = newCost;
-          if(cell->heapindex != 0)
-            heap.updateheap(cell,key);
-          else
-            heap.insertheap(cell,key);
+        if(cell->open_iteration != iteration_){
+          cell->open_iteration = iteration_;
           cell->cost = newCost;
+          cell->heapindex = 0;
+          key.key[0] = newCost;
+          heap.insertheap(cell,key);
+        }
+        else if(cell->cost > newCost){
+          cell->cost = newCost;
+          key.key[0] = newCost;
+          heap.updateheap(cell,key);
         }
       }
     }
@@ -257,15 +283,19 @@ int EGraph3dGridHeuristic::getHeuristic(const vector<int>& coord){
   return cell->cost;
 }
 
-// IF IT IS NOT AN OBSTACLE, PUT IN THE HEAP
-#define SHORTCUT_SUCCESSOR(offset){               \
-  if(sc[id + (offset)].cost != -1 && (sc[id + (offset)].cost > currentCost)){\
-    if(sc[id + (offset)].heapindex != 0)          \
-      sc_heap.updateheap(&sc[id + (offset)],key); \
-    else                                          \
-      sc_heap.insertheap(&sc[id + (offset)],key); \
-    sc[id + (offset)].cost = currentCost;         \
-  }                                               \
+#define SHORTCUT_SUCCESSOR(offset){                     \
+  if(sc[id + (offset)].cost != -1){                     \
+    if(sc[id + (offset)].open_iteration != iteration_){ \
+      sc[id + (offset)].open_iteration = iteration_;    \
+      sc[id + (offset)].cost = currentCost;             \
+      sc[id + (offset)].heapindex = 0;                  \
+      sc_heap.insertheap(&sc[id + (offset)],key);       \
+    }                                                   \
+    else if((sc[id + (offset)].cost > currentCost)){    \
+      sc_heap.updateheap(&sc[id + (offset)],key);       \
+      sc[id + (offset)].cost = currentCost;             \
+    }                                                   \
+  }                                                     \
 }
 
 // 3d breadth first search from goal to all other states until desired component
@@ -290,7 +320,7 @@ void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
   while(!sc_heap.emptyheap() && shortcuts.empty()){
     EGraph3dGridHeuristicCell* state = (EGraph3dGridHeuristicCell*)sc_heap.deleteminheap();
     int id = state->id;
-    state->closed = true;
+    state->closed_iteration = iteration_;
     int oldCost = state->cost;
     int currentCost = oldCost + inflated_cost_1_move_;
     key.key[0] = currentCost;
@@ -342,7 +372,7 @@ void EGraph3dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
     counter++;
   }
   //ROS_INFO("number of shortcuts returned %lu", shortcuts.size());
-  ROS_INFO("number of shortcut expands: %d", counter);
+  //ROS_INFO("number of shortcut expands: %d", counter);
 
   if (shortcuts.empty()){
       int count=0;

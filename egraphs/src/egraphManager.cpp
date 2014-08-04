@@ -85,9 +85,9 @@ bool EGraphManager<HeuristicType>::setGoal(){
     stats_.shortcut_time = 0;
     stats_.snap_time = 0;
     stats_.num_snaps = 0;
-    clock_t time = clock();
+    //clock_t time = clock();
     egraph_heur_->setGoal(coord);
-    ROS_INFO("egraph heuristic setGoal time %f", double(clock()-time)/CLOCKS_PER_SEC);
+    //ROS_INFO("egraph heuristic setGoal time %f", double(clock()-time)/CLOCKS_PER_SEC);
     //snaps_.clear();
     //snap_combo_cache_.clear();
     return true;
@@ -154,7 +154,7 @@ void EGraphManager<HeuristicType>::getSnapSuccessors(int stateID, vector<int>* S
         bool is_unique = find(SuccIDV->begin(), SuccIDV->end(), successor_id) == SuccIDV->end();
         if(is_snap_successful && is_unique){
             assert(cost_of_snap > 0);
-            ROS_INFO("snap from %d to %d with cost %d\n",stateID,successor_id,cost_of_snap);
+            //ROS_INFO("snap from %d to %d with cost %d\n",stateID,successor_id,cost_of_snap);
             SuccIDV->push_back(successor_id);
             Edge edge(stateID, successor_id);
             //snaps_.insert({edge, successor_id});
@@ -266,7 +266,7 @@ void EGraphManager<HeuristicType>::getSnapShortcuts(int stateID,
     snap_midpoints->push_back(egraph_state_id);
     edgeTypes->push_back(EdgeType::SNAP_DIRECT_SHORTCUT);
 
-    ROS_INFO("snap-shortcut from %d to %d (through %d) with lazy cost %d",stateID,SuccIDV->back(),egraph_state_id,CostV->back());
+    //ROS_INFO("snap-shortcut from %d to %d (through %d) with lazy cost %d",stateID,SuccIDV->back(),egraph_state_id,CostV->back());
   }
 }
 
@@ -393,7 +393,7 @@ void EGraphManager<HeuristicType>::getDirectShortcutSuccessors(int source_state_
         double t0 = ros::Time::now().toSec();
         int shortcut_cost = egraph_->getShortestPath(equiv_eg_vert,
                                                      shortcut_successor_egraph);
-        ROS_INFO("direct shortcut %d->%d (%d)",source_state_id,successor_id,shortcut_cost);
+        //ROS_INFO("direct shortcut %d->%d (%d)",source_state_id,successor_id,shortcut_cost);
         assert(shortcut_cost > 0);
         CostV->push_back(shortcut_cost);
         double t1 = ros::Time::now().toSec();
@@ -660,8 +660,8 @@ template <typename HeuristicType>
 void EGraphManager<HeuristicType>::initEGraph(bool set_goal){
     // this order is important because precomputations uses the number of
     // components
-    egraph_->computeComponents();
     clock_t time = clock();
+    egraph_->computeComponents();
     egraph_heur_->runPrecomputations();
     stats_.precomp_time += static_cast<double>(clock()-time)/CLOCKS_PER_SEC;
 

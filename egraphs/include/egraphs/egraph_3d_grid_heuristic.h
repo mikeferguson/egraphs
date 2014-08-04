@@ -31,14 +31,20 @@ class EGraph3dGridHeuristic : public EGraphHeuristic<vector<int> >{
   protected:
     class EGraph3dGridHeuristicCell: public AbstractSearchState{
       public:
-        EGraph3dGridHeuristicCell(){};
+        EGraph3dGridHeuristicCell(){
+          open_iteration = 0;
+          closed_iteration = 0;
+        };
         ~EGraph3dGridHeuristicCell(){};
           
-        bool closed;
+        int open_iteration;
+        int closed_iteration;
         int id;
         int cost;
         vector<EGraph::EGraphVertex*> egraph_vertices;
     };
+
+    int iteration_;
 
     int sizex_;
     int sizey_;
