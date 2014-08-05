@@ -10,7 +10,7 @@
   <url>http://ros.org/wiki/egraphs</url>
   
   <depend package="roscpp"/>
-  <depend package="sbpl"/>
+  <!-- <depend package="sbpl"/> -->
 
   <export>
     <cpp cflags="-I${prefix}/include" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -legraphs"/>

@@ -107,9 +107,9 @@ void LazyAEGPlanner<HeuristicType>::ExpandState(LazyAEGState* parent){
 
   clock_t getSucc_t0 = clock();
   if(bforwardsearch)
-    environment_->GetSuccs(parent->id, &children, &costs, &isTrueCost);
+    environment_->GetLazySuccsWithUniqueIds(parent->id, &children, &costs, &isTrueCost);
   else
-    environment_->GetPreds(parent->id, &children, &costs, &isTrueCost);
+    environment_->GetLazyPredsWithUniqueIds(parent->id, &children, &costs, &isTrueCost);
   clock_t getSucc_t1 = clock();
   succsClock += getSucc_t1-getSucc_t0;
 
@@ -401,9 +401,9 @@ bool LazyAEGPlanner<HeuristicType>::reconstructSuccs(LazyAEGState* state,
     vector<int> CostV;
     vector<bool> isTrueCost;
     if(bforwardsearch)
-        environment_->GetSuccs(state->expanded_best_parent->id, &SuccIDV, &CostV, &isTrueCost);
+        environment_->GetLazySuccsWithUniqueIds(state->expanded_best_parent->id, &SuccIDV, &CostV, &isTrueCost);
     else
-        environment_->GetPreds(state->expanded_best_parent->id, &SuccIDV, &CostV, &isTrueCost);
+        environment_->GetLazyPredsWithUniqueIds(state->expanded_best_parent->id, &SuccIDV, &CostV, &isTrueCost);
     int actioncost = INFINITECOST;
     //ROS_INFO("reconstruct with standard edge %d\n",state->expanded_best_parent->id);
     for(unsigned int i=0; i<SuccIDV.size(); i++){
