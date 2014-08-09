@@ -773,7 +773,7 @@ int LazyAEGPlanner<HeuristicType>::replan(vector<int>* solution_stateIDs_V, EGra
   stat_map_["solution_cost"] = goal_state.g;
   stat_map_["heuristic_set_goal_time"] = heuristicSetGoalTime;
   stat_map_["heuristic_time"] = double(heuristicClock)/CLOCKS_PER_SEC;
-  stat_map_["generate_successors time"] = double(succsClock)/CLOCKS_PER_SEC;
+  stat_map_["generate_successors_time"] = double(succsClock)/CLOCKS_PER_SEC;
   stat_map_["shortcuts_time"] = double(shortcutClock)/CLOCKS_PER_SEC;
   stat_map_["path_reconstruction_time"] = reconstructTime;
   stat_map_["feedback_path_time"] = feedbackPathTime;
