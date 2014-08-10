@@ -8,8 +8,6 @@
 #include<sbpl/headers.h>
 #include<egraphs/egraph_discretize.h>
 
-using namespace std;
-
 class EGraph{
   public:
 
@@ -31,17 +29,17 @@ class EGraph{
         };
 
         int id;
-        vector<int> coord;
-        vector<double> constants;
+        std::vector<int> coord;
+        std::vector<double> constants;
         //an adjacency list representing the graph (using the egraph ids)
-        vector<EGraphVertex*> neighbors;
-        vector<int> costs;
-        vector<bool> valid;
-        vector<int> use_frequency;
+        std::vector<EGraphVertex*> neighbors;
+        std::vector<int> costs;
+        std::vector<bool> valid;
+        std::vector<int> use_frequency;
         int component;
 
-        vector<EGraphVertex*> shortcuts;
-        vector<int> shortcut_costs;
+        std::vector<EGraphVertex*> shortcuts;
+        std::vector<int> shortcut_costs;
         int shortcutIteration;
 
         int search_iteration;
@@ -56,16 +54,16 @@ class EGraph{
         int id;
     };
 
-    //constructor takes 4 vectors (min,max,res,names) which tells me the number of dimensions, how many values they can have, and the dimension names
+    //constructor is told how many dimensions (dimensions are used for determin state equality) and number of constants (values
+    //carried with the state but not used for identity and are never discretized)
     //load can be called after this in order bring up a stored E-Graph with different parameters than those stored in the file
-    //EGraph(vector<double>& min, vector<double>& max, vector<double>& resolution, vector<string>& names, int num_constants);
     EGraph(EGraphDiscretize* eg_disc, int dimensions, int num_constants);
 
     //another constructor takes an egraph file to load
     //this will load the E-Graph using the parameters (min,max,resolution,names) stored in the file
-    EGraph(string filename);
+    EGraph(EGraphDiscretize* eg_disc, std::string filename);
 
-    EGraph(string filename, string stats_filename);
+    EGraph(std::string filename, std::string stats_filename);
 
     ~EGraph();
 
@@ -73,14 +71,13 @@ class EGraph{
 
     void clearEGraph();
 
-    //add path takes a vector of names, and a vector of vectors of doubles (the waypoints on the path), a vector of costs
+    //add path takes a vector of vectors of doubles (the waypoints on the path), a vector of costs
     //this add the edges to the e-graph. 
-    //no longer computes all-pairs! this simplifies the e-graph data structure and drops computation between queries to almost nothing. 
-    //no longer needs to compute components!
-    //finally this will call setEGraph on the EGraphable's EGraphHeuristic to prepare it for the next query
-    bool addPaths(const vector<vector<vector<double> > >& coords, const vector<vector<int> >& costs);
-    bool addPath(const vector<vector<double> >& coords, const vector<int>& costs);
-    bool addPathHelper(const vector<vector<double> >& coords, const vector<int>& costs);
+    //connected components are computed at the end
+    bool addPath(const std::vector<std::vector<double> >& coords, const std::vector<int>& costs);
+    //add paths runs add path on each path, and only computes the connected components once
+    bool addPaths(const std::vector<std::vector<std::vector<double> > >& coords, const std::vector<std::vector<int> >& costs);
+    bool addPathHelper(const std::vector<std::vector<double> >& coords, const std::vector<int>& costs);
 
     int getNumComponents(){return num_components_;};
     void computeComponents();
@@ -88,15 +85,15 @@ class EGraph{
     void print();
 
     //save egraph
-    bool save(string filename);
+    bool save(std::string filename);
 
     //load egraph
-    bool load(string filename, bool clearCurrentEGraph=true);
+    bool load(std::string filename, bool clearCurrentEGraph=true);
 
-    bool saveStats(string filename);
-    bool loadStats(string filename);
+    bool saveStats(std::string filename);
+    bool loadStats(std::string filename);
 
-    void recordStats(vector<vector<double> >& coords);
+    void recordStats(std::vector<std::vector<double> >& coords);
     void resetStats();
     void prune(int max_size, int method);
     void setClusterRadius(double r){cluster_radius_ = r;};
@@ -105,31 +102,27 @@ class EGraph{
     void updateEdge(EGraphVertex* v1, EGraphVertex* v2, bool valid, int cost);
     void invalidateVertex(EGraphVertex* v1);
 
-    void discToCont(EGraphVertex* v, vector<double>& c);
-    void contToDisc(vector<double> c, vector<int>& d);
+    void discToCont(EGraphVertex* v, std::vector<double>& c);
+    void contToDisc(std::vector<double> c, std::vector<int>& d);
 
-    int getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVertex*>* path=NULL, vector<int>* costs=NULL);
+    int getShortestPath(EGraphVertex* v1, EGraphVertex* v2, std::vector<EGraphVertex*>* path=NULL, std::vector<int>* costs=NULL);
 
     //an id to coordinate mapping
-    vector<EGraphVertex*> id2vertex;
-    EGraphVertex* getVertex(vector<int>& coord);
+    std::vector<EGraphVertex*> id2vertex;
+    EGraphVertex* getVertex(std::vector<int>& coord);
     int search_iteration_;
   protected:
 
     unsigned int inthash(unsigned int key);
-    int getHashBin(vector<int>& coord);
+    int getHashBin(std::vector<int>& coord);
 
-    EGraphVertex* createVertex(vector<int>& coord, vector<double>& constants);
+    EGraphVertex* createVertex(std::vector<int>& coord, std::vector<double>& constants);
     void addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost);
 
     //a coordinate to id mapping
     //map<vector<double>,int> vertex2id;
-    vector<vector<EGraphVertex*> > hashtable;
+    std::vector<std::vector<EGraphVertex*> > hashtable;
 
-    //vector<double> min_;
-    //vector<double> max_;
-    //vector<double> res_;
-    //vector<string> names_;
     int num_dims_;
     int num_constants_;
     int num_edges_;

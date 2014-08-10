@@ -1,5 +1,7 @@
 #include<egraphs/egraph_3d_grid_heuristic.h>
 
+using namespace std;
+
 #define HEUR_XYZ2ID(x,y,z) ((z + 1) * planeSize_ + (y + 1) * width_ + (x + 1))
 
 EGraph3dGridHeuristic::EGraph3dGridHeuristic(const EGraphable<vector<int> >& env, 

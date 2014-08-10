@@ -67,40 +67,40 @@ class EGraphManager {
         void setEpsE(double epsE){egraph_heur_->setEpsE(epsE);};
         bool setGoal();
         int getHeuristic(int state_id);
-        void getSnapSuccessors(int stateID, vector<int>* SuccIDV, 
-                               vector<int>* CostV, vector<bool>* isTrueCost, 
-                               vector<EdgeType>* edgeTypes);
+        void getSnapSuccessors(int stateID, std::vector<int>* SuccIDV, 
+                               std::vector<int>* CostV, std::vector<bool>* isTrueCost, 
+                               std::vector<EdgeType>* edgeTypes);
         int getSnapTrueCost(int parentID, int childID);
-        void getDirectShortcutSuccessors(int stateID, vector<int>* SuccIDV, 
-                                         vector<int>* CostV, vector<bool>* isTrueCost,
-                                         vector<EdgeType>* edgeTypes);
-        void getComboSnapShortcutSuccessors(int stateID, vector<int>* SuccIDV, 
-                                            vector<int>* CostV, vector<bool>* isTrueCost);
+        void getDirectShortcutSuccessors(int stateID, std::vector<int>* SuccIDV, 
+                                         std::vector<int>* CostV, std::vector<bool>* isTrueCost,
+                                         std::vector<EdgeType>* edgeTypes);
+        void getComboSnapShortcutSuccessors(int stateID, std::vector<int>* SuccIDV, 
+                                            std::vector<int>* CostV, std::vector<bool>* isTrueCost);
 
         void getSnapShortcuts(int stateID, 
-                              vector<int>* SuccIDV, 
-                              vector<int>* CostV, 
-                              vector<bool>* isTrueCost,
-                              vector<EdgeType>* edgeTypes,
-                              vector<int>* snap_midpoints);
+                              std::vector<int>* SuccIDV, 
+                              std::vector<int>* CostV, 
+                              std::vector<bool>* isTrueCost,
+                              std::vector<EdgeType>* edgeTypes,
+                              std::vector<int>* snap_midpoints);
         int getSnapShortcutTrueCost(int parentID, int snap_midpoint, int childID);
         bool reconstructSnapShortcut(LazyAEGState* state, LazyAEGState*& next_state,
-                                     vector<int>* wholePathIds, vector<int>* costs,
+                                     std::vector<int>* wholePathIds, std::vector<int>* costs,
                                      int& totalCost);
 
 
 
         bool reconstructDirectShortcuts(LazyAEGState* state, 
                                            LazyAEGState*& next_state, 
-                                           vector<int>* wholePathIds, 
-                                           vector<int>* costs, int& shortcut_count,
+                                           std::vector<int>* wholePathIds, 
+                                           std::vector<int>* costs, int& shortcut_count,
                                            int& totalCost);
 
         bool reconstructSnap(LazyAEGState* state, LazyAEGState*& next_state, 
-                             vector<int>* wholePathIds, vector<int>* costs);
+                             std::vector<int>* wholePathIds, std::vector<int>* costs);
 
         bool reconstructComboSnapShortcut(LazyAEGState* state, LazyAEGState*& next_state, 
-                                          vector<int>* wholePathIds, vector<int>* costs, 
+                                          std::vector<int>* wholePathIds, std::vector<int>* costs, 
                                           int goal_id);
 
         void storeLastPath(const std::vector<int>& path, const std::vector<int>& costs);
@@ -121,11 +121,11 @@ class EGraphManager {
         void printVector(std::vector<int>& v); 
     private:
         void errorCheckEGraphVertex(EGraph::EGraphVertex* vertex);
-        vector<int> getDirectShortcutStateIDs(int start_id, int end_id, vector<int>* costs);
+        std::vector<int> getDirectShortcutStateIDs(int start_id, int end_id, std::vector<int>* costs);
 
         void fillInDirectShortcut(int start_id, int end_id,
-                                  vector<int>* wholePathIds, 
-                                  vector<int>* costs, int& shortcut_count);
+                                  std::vector<int>* wholePathIds, 
+                                  std::vector<int>* costs, int& shortcut_count);
 
         void printVector(std::vector<double>& v); 
 

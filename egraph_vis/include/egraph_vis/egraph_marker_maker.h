@@ -3,34 +3,28 @@
 
 #include<vector>
 #include<visualization_msgs/MarkerArray.h>
-using namespace std;
 
 class EGraphMarkerMaker{
   public:
-    virtual visualization_msgs::MarkerArray stateToVisualizationMarker(vector<double> coord) = 0;
-    virtual visualization_msgs::MarkerArray edgeToVisualizationMarker(vector<double> coord, vector<double> coord2) = 0;
-    virtual visualization_msgs::MarkerArray stateToDetailedVisualizationMarker(vector<double> coord) = 0;
+    //Given a state vector, return a MarkerArray that represents the state in a compact way.
+    //Every state in the E-Graph will be visualized at the same time using this function so
+    //the marker should be small (typically a down projection) like a sphere otherwise
+    //you won't be able to see anything. You will be able to click on these compact markers
+    //to display a more detailed one on demand.
+    virtual visualization_msgs::MarkerArray stateToVisualizationMarker(std::vector<double> coord) = 0;
+
+    //Given two state vectors, return a MarkerArray that represents the edge in a compact way.
+    //Every edge in the E-Graph will be visualized at the same time using this function so
+    //the marker should be small (typically a down projection) like a line, otherwise
+    //you won't be able to see anything. 
+    virtual visualization_msgs::MarkerArray edgeToVisualizationMarker(std::vector<double> coord, std::vector<double> coord2) = 0;
+
+    //Given a state vector, return a MarkerArray that represents the state in a very detailed way,
+    //such as all the robot's meshes in the proper configuration. Don't worry about cluttering
+    //the display. These markers show up on demand by clicking one of the compact markers
+    //(stateToVisualizationMarker). 
+    virtual visualization_msgs::MarkerArray stateToDetailedVisualizationMarker(std::vector<double> coord) = 0;
 };
 
 #endif
 
-/*
-change the name of this class.....
-
-a EGraphVisualizer that takes an egraph and an EGraphMarkerMaker
-it has a visualize function which runs through the egraph and
-calls stateToVisualizationMarker and edgeToVisualizationMarker 
-each state and edge. It wraps interactive markers around them,
-and publishes. 
-When the user clicks on a state, it draws the detailed version of the 
-state using stateToDetailedVisualizationMarker. it also highlights
-neighbors, shows costs to each, shows heuristics for the selected state
-and its neighbors. it also highlights shortcuts for the selected state.
-this may look crowded...so i may have check boxes in the menu attached 
-to the selected state
-the user write the 3 conversion functions to adhere to the EGraphMarkerMaker interface
-
-we may need to have the egraph maintain a version number internally
-each time the addPath function is called it updates the number
-this way when the user interacts we can make sure the egraph hasn't changed under us and cause a crash...
-*/

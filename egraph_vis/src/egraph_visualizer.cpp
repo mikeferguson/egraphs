@@ -1,5 +1,7 @@
 #include<egraph_vis/egraph_visualizer.h>
 
+using namespace std;
+
 EGraphVisualizer::EGraphVisualizer(EGraph* eg, EGraphMarkerMaker* converter){
   eg_ = eg;
   converter_ = converter;

@@ -22,7 +22,7 @@ class LazyAEGState: public AbstractSearchState{
     int snap_midpoint;
     int expanded_snap_midpoint;
     bool in_incons;
-    priority_queue<LazyAEGListElement> lazyList;
+    std::priority_queue<LazyAEGListElement> lazyList;
     bool isTrueCost;
 };
 

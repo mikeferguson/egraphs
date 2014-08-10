@@ -1,5 +1,7 @@
 #include<egraphs/egraph_2d_grid_heuristic.h>
 
+using namespace std;
+
 #define HEUR_XY2ID(x,y) ((y + 1) * width_ + (x + 1))
 
 EGraph2dGridHeuristic::EGraph2dGridHeuristic(const EGraphable<vector<int> >& env, 
@@ -78,7 +80,7 @@ void EGraph2dGridHeuristic::getEGraphVerticesWithSameHeuristic(const vector<int>
 void EGraph2dGridHeuristic::runPrecomputations(){
   //ROS_INFO("begin precomputations");
   //refill the cell to egraph vertex mapping
-  clock_t time = clock();
+  //clock_t time = clock();
   for(int i=0; i<planeSize_; i++){
     heur[i].egraph_vertices.clear();
     sc[i].egraph_vertices.clear();
@@ -113,7 +115,7 @@ void EGraph2dGridHeuristic::runPrecomputations(){
   }
   shortcut_cache_.clear();
   shortcut_cache_.resize(eg_->getNumComponents(), NULL);
-  ROS_INFO("precomp time took %f", double(time-clock())/CLOCKS_PER_SEC);
+  //ROS_INFO("precomp time took %f", double(clock()-time)/CLOCKS_PER_SEC);
   //ROS_INFO("done precomputations");
 }
 
@@ -331,7 +333,7 @@ void EGraph2dGridHeuristic::getDirectShortcut(int component, vector<EGraph::EGra
     counter++;
   }
   //ROS_INFO("number of shortcuts returned %lu", shortcuts.size());
-  ROS_INFO("number of shortcut expands: %d", counter);
+  //ROS_INFO("number of shortcut expands: %d", counter);
 
   if (shortcuts.empty()){
     int count=0;

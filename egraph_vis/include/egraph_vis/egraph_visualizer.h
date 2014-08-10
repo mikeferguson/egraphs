@@ -37,7 +37,7 @@ class EGraphVisualizer{
     boost::shared_ptr<interactive_markers::InteractiveMarkerServer> server_;
     interactive_markers::MenuHandler menu_handler_;
 
-    vector<EGraphVisEntry> vis_table_;
+    std::vector<EGraphVisEntry> vis_table_;
 };
 
 #endif

@@ -3,11 +3,10 @@
 
 #include <vector>
 #include <stdio.h>
-using namespace std;
 
 class EGraphStatWriter{
   public:
-    static void writeStatsToFile(string filename, bool start_new_file, vector<string> names, vector<double> values){
+    static void writeStatsToFile(std::string filename, bool start_new_file, std::vector<std::string> names, std::vector<double> values){
       FILE* fout;
       if(start_new_file){
         fout = fopen(filename.c_str(),"w");

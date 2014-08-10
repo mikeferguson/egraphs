@@ -1,6 +1,8 @@
 #include<egraphs/egraph_euclidean_heuristic.h>
 #include<limits>
 
+using namespace std;
+
 /* WARNING: This heuristic is not very efficient right now. It will be replaced in the next few months with a much more 
  * efficient version. Use at your own risk!
  */

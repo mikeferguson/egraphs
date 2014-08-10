@@ -1,5 +1,7 @@
 #include<egraphs/egraph.h>
 
+using namespace std;
+
 //TODO: This is an arbitrary size...
 #define ARBITRARY_HASH_TABLE_SIZE 32*1024
 
@@ -15,7 +17,8 @@ EGraph::EGraph(EGraphDiscretize* eg_disc, int dimensions, int num_constants){
   hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
 }
 
-EGraph::EGraph(string filename){
+EGraph::EGraph(EGraphDiscretize* eg_disc, string filename){
+  eg_disc_ = eg_disc;
   hashtable.resize(ARBITRARY_HASH_TABLE_SIZE);
   load(filename);
 }
