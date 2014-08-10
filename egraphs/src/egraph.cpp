@@ -895,7 +895,9 @@ void EGraph::addEdge(EGraphVertex* v1, EGraphVertex* v2, int cost){
 
 void EGraph::discToCont(EGraphVertex* v, vector<double>& c){
   c.clear();
-  eg_disc_->discToCont(v->coord,c);
+  vector<int> coord = v->coord;
+  coord.resize(num_dims_);
+  eg_disc_->discToCont(coord,c);
   //for(unsigned int i=0; i<v->coord.size(); i++)
     //c.push_back(v->coord[i]*res_[i]+min_[i]);
   for(unsigned int i=0; i<v->constants.size(); i++)
@@ -908,7 +910,9 @@ void EGraph::discToCont(EGraphVertex* v, vector<double>& c){
 
 void EGraph::contToDisc(vector<double> c, vector<int>& d){
   d.clear();
-  eg_disc_->contToDisc(c,d);
+  vector<double> coord = c;
+  coord.resize(num_dims_);
+  eg_disc_->contToDisc(coord,d);
   //for(unsigned int i=0; i<res_.size(); i++)
     //d.push_back(round((c[i]-min_[i])/(res_[i])));
 }

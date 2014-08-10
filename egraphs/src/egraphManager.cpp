@@ -693,10 +693,32 @@ void EGraphManager<HeuristicType>::errorCheckEGraphVertex(EGraph::EGraphVertex* 
     }
     if(egv2 != egv){
         ROS_ERROR("[AEG] ErrorCheckEGraph: We didn't get back the egraph vertex we started with (memory addresses don't match)!\n");
+        printf("Original E-Graph Vertex id: %d\n",egv->id);
+        printf("Original disc: ");
+        printVector(egv->coord);
+        printf("Original cont: ");
+        printVector(eg_coord);
+        printf("getStateID=%d\n",env_id);
+        printf("getCoord cont: ");
+        printVector(env_coord);
+        printf("getCoord disc: ");
+        printVector(env_dcoord);
+        printf("Returned E-Graph Vertex id: %d\n",egv2->id);
         assert(false);
     }
     if(egv2->id != egv->id){
         ROS_ERROR("[AEG] ErrorCheckEGraph: We didn't get back the egraph vertex we started with (egraph ids don't match)!\n");
+        printf("Original E-Graph Vertex id: %d\n",egv->id);
+        printf("Original disc: ");
+        printVector(egv->coord);
+        printf("Original cont: ");
+        printVector(eg_coord);
+        printf("getStateID=%d\n",env_id);
+        printf("getCoord cont: ");
+        printVector(env_coord);
+        printf("getCoord disc: ");
+        printVector(env_dcoord);
+        printf("Returned E-Graph Vertex id: %d\n",egv2->id);
         assert(false);
     }
 }
