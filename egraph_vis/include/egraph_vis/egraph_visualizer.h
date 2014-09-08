@@ -13,6 +13,8 @@ class EGraphVisualizer{
     ~EGraphVisualizer();
     void visualize();
 
+    visualization_msgs::MarkerArray getVisualization(std::string type);
+
   protected:
     class EGraphVisEntry{
       public:

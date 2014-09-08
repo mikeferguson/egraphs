@@ -197,3 +197,55 @@ void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
 
   server_->insert(int_marker);
 }
+
+visualization_msgs::MarkerArray EGraphVisualizer::getVisualization(std::string type){
+  visualization_msgs::MarkerArray ma;
+  
+  if(type.compare("egraph") == 0 || type.compare("detailed_egraph") == 0)
+  {
+    visualization_msgs::MarkerArray m_state;
+    for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
+      EGraph::EGraphVertex* v = eg_->id2vertex[i];
+
+      bool valid = false;
+      for(unsigned int a=0; a<v->valid.size(); a++)
+        valid |= v->valid[a];
+      if(!valid)
+        continue;
+
+      // get state
+      vector<double> coord;
+      eg_->discToCont(v,coord);
+
+      if(type.compare("detailed_egraph") == 0)
+        m_state = converter_->stateToDetailedVisualizationMarker(coord);
+      else 
+        m_state = converter_->stateToVisualizationMarker(coord);
+
+      // get edges
+      for(unsigned int j=0; j<v->neighbors.size(); j++){
+        if(!v->valid[j])
+          continue;
+        EGraph::EGraphVertex* u = v->neighbors[j];
+        if(v->id<u->id){
+          vector<double> coord2;
+          eg_->discToCont(u,coord2);
+          visualization_msgs::MarkerArray m = converter_->edgeToVisualizationMarker(coord,coord2);
+          ma.markers.insert(ma.markers.end(), m.markers.begin(), m.markers.end());
+        }
+      }
+      ma.markers.insert(ma.markers.end(), m_state.markers.begin(), m_state.markers.end());
+    }
+
+    for(unsigned int i = 0; i < ma.markers.size(); ++i)
+    {
+      ma.markers[i].ns = "egraph";
+      ma.markers[i].id = i;
+    }
+  }
+  else
+    ROS_ERROR("No visualization of type '%s' is supported.", type.c_str());
+
+  return ma;
+}
+
