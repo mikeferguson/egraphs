@@ -8,6 +8,9 @@ using namespace std;
  * efficient version. Use at your own risk!
  */
 
+EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env) : env_(env){
+}
+
 EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, double distance_inflation) : env_(env){
   dist_inflation = distance_inflation;
   inflation.clear();
@@ -149,8 +152,8 @@ int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
 }
 
 inline int EGraphEuclideanHeuristic::euclideanDistance(const vector<double>& c1, const vector<double>& c2){
-  assert(c1.size()==12);
-  assert(c2.size()==12);
+  assert(c1.size()==9);
+  assert(c2.size()==9);
 
   float accum = 0;
   for(unsigned int i=0; i<c1.size(); i++)
@@ -184,13 +187,13 @@ void EGraphEuclideanHeuristic::getEGraphVerticesWithSameHeuristic(const vector<d
     //ROS_INFO("want to snap to goal?");
     return;
   }
-  assert(coord.size()==12);
+  assert(coord.size()==9);
   vector<double> coord2 = verts[last_best_idx].coord;
   for(unsigned int i=0; i<coord.size(); i++){
     double d;
-    if(continuous_joint[i])
-      d = fabs(angles::shortest_angular_distance(coord[i],coord2[i]));
-    else
+    //if(continuous_joint[i])
+      //d = fabs(angles::shortest_angular_distance(coord[i],coord2[i]));
+    //else
       d = fabs(coord[i] - coord2[i]);
     if(d > dist_to_snap[i]){
       ROS_ERROR("not close enough to snap: dimension %d (%f - %f)",i,coord[i],coord2[i]);

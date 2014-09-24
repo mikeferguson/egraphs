@@ -4,10 +4,18 @@
 
 #define HARDCODED_EPS_E 10.0
 #define NN 5
+#define C_SIZE 9
 
-#define KD_DEBUG true
+#define KD_DEBUG false
 
 using namespace std;
+
+EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env) : env_(env){
+  epsE_ = HARDCODED_EPS_E;
+  indices = flann::Matrix<int>(new int[NN], 1, NN);
+  dists = flann::Matrix<float>(new float[NN], 1, NN);
+  query = flann::Matrix<float>(new float[C_SIZE], 1, C_SIZE);
+}
 
 EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, double distance_inflation) : env_(env){
   dist_inflation = distance_inflation;
@@ -41,6 +49,7 @@ EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<doubl
   indices = flann::Matrix<int>(new int[NN], 1, NN);
   dists = flann::Matrix<float>(new float[NN], 1, NN);
   query = flann::Matrix<float>(new float[cont.size()], 1, cont.size());
+  exit(1);
 }
 
 EGraphEuclideanHeuristic::~EGraphEuclideanHeuristic(){
@@ -51,12 +60,13 @@ EGraphEuclideanHeuristic::~EGraphEuclideanHeuristic(){
 
 void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
   assert(epsE_==HARDCODED_EPS_E);
-  ROS_INFO("set heuristic goal");
+  //ROS_INFO("set heuristic goal");
   goal_ = goal;
 
   coords_.resize(eg_->id2vertex.size()+1);
   coords_.back() = goal;
 
+  /*
   if(inflation.empty())
     inflation.resize(goal.size(), dist_inflation);
 
@@ -64,8 +74,9 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
     inflation.resize(goal.size(), dist_inflation);
   if(continuous_joint.empty())
     continuous_joint.resize(goal.size(), false);
+    */
 
-  ROS_INFO("compute shortcuts");
+  //ROS_INFO("compute shortcuts");
   //compute shortcuts
   shortcut_cache_.resize(eg_->getNumComponents(),NULL);
   vector<int> comp_dists(eg_->getNumComponents(),std::numeric_limits<int>::max());
@@ -73,9 +84,10 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
   vector<double> h_coord;
   vector<int> goal_to_eg(eg_->id2vertex.size());
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
-    eg_->discToCont(eg_->id2vertex[i],c_coord);
-    env_.projectToHeuristicSpace(c_coord,h_coord);
-    int dist = euclideanDistance(h_coord,goal_);
+    //eg_->discToCont(eg_->id2vertex[i],c_coord);
+    //env_.projectToHeuristicSpace(c_coord,h_coord);
+    //int dist = euclideanDistance(h_coord,goal_);
+    int dist = euclideanDistance(coords_[i],goal_);
     goal_to_eg[i] = dist;
     int c = eg_->id2vertex[i]->component;
     if(dist < comp_dists[c]){
@@ -85,7 +97,7 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
     }
   }
 
-  ROS_INFO("compute best gval for each egraph node");
+  //ROS_INFO("compute best gval for each egraph node");
   gval.clear();
   gval.resize(fw_matrix.size(),make_pair(INFINITECOST,0));
   for(unsigned int i=0; i<gval.size(); i++){
@@ -100,7 +112,7 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
     }
     //assert(gval[i].first < INFINITECOST);
   }
-  ROS_INFO("sort gvals %lu",gval.size());
+  //ROS_INFO("sort gvals %lu",gval.size());
   gval_sorted = gval;
   sort(gval_sorted.begin(), gval_sorted.end()); //Note that this is expensive! 
 
@@ -136,9 +148,10 @@ void EGraphEuclideanHeuristic::initNaive(){
   vector<double> c_coord;
   vector<double> h_coord;
   for(unsigned int i=0; i<verts.size()-1; i++){
-    eg_->discToCont(eg_->id2vertex[i],c_coord);
-    env_.projectToHeuristicSpace(c_coord,h_coord);
-    verts[i].coord = h_coord;
+    //eg_->discToCont(eg_->id2vertex[i],c_coord);
+    //env_.projectToHeuristicSpace(c_coord,h_coord);
+    //verts[i].coord = h_coord;
+    verts[i].coord = coords_[i];
 
     verts[i].id = i;
     verts[i].heapindex = 0;
@@ -197,10 +210,10 @@ int EGraphEuclideanHeuristic::naiveGetHeuristic(const vector<double>& coord, int
 
 int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
 #if KD_DEBUG
-  assert(coord.size()==12);
+  assert(coord.size()==C_SIZE);
 #endif
   //ROS_INFO("get heuristic");
-  double epsNN = 1.0;
+  //double epsNN = 1.0;
   bool sort = true;
   for(unsigned int i=0; i<coord.size(); i++)
     query[0][i] = coord[i];
@@ -263,7 +276,7 @@ int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
 #endif
   
   //suboptimality bound on choosing best index
-  int eps = 3.0; //TODO: make parameter
+  int eps = 2.0; //TODO: make parameter
 
   //initialize best_h and best_idx to the goal
   int g_low = 0.0; //lower bound on g comes from the goal
@@ -284,7 +297,9 @@ int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
     }
   }
   
+#if KD_DEBUG
   int last_update = 0;
+#endif
   int g_max = best_h - e_low;
   //now iterate over all egraph nodes in increasing gval order
   unsigned int i = 0;
@@ -301,7 +316,9 @@ int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
       best_h = temp_h;
       best_idx = gval_sorted[i].second;
       g_max = best_h - e_low;
+#if KD_DEBUG
       last_update = i;
+#endif
     }
   }
 
@@ -351,8 +368,8 @@ int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
 
 inline int EGraphEuclideanHeuristic::euclideanDistance(const vector<double>& c1, const vector<double>& c2){
 #if KD_DEBUG
-  assert(c1.size()==12);
-  assert(c2.size()==12);
+  assert(c1.size()==C_SIZE);
+  assert(c2.size()==C_SIZE);
 #endif
 
   float accum = 0;
@@ -397,13 +414,15 @@ void EGraphEuclideanHeuristic::getEGraphVerticesWithSameHeuristic(const vector<d
     //ROS_INFO("want to snap to goal?");
     return;
   }
-  assert(coord.size()==12);
+#if KD_DEBUG
+  assert(coord.size()==C_SIZE);
+#endif
   vector<double> coord2 = coords_[last_best_idx];
   for(unsigned int i=0; i<coord.size(); i++){
     double d;
-    if(continuous_joint[i])
-      d = fabs(angles::shortest_angular_distance(coord[i],coord2[i]));
-    else
+    //if(continuous_joint[i])
+      //d = fabs(angles::shortest_angular_distance(coord[i],coord2[i]));
+    //else
       d = fabs(coord[i] - coord2[i]);
     if(d > dist_to_snap[i]){
 #if KD_DEBUG
@@ -417,6 +436,7 @@ void EGraphEuclideanHeuristic::getEGraphVerticesWithSameHeuristic(const vector<d
 }
 
 void EGraphEuclideanHeuristic::runPrecomputations(){
+  assert(epsE_ == HARDCODED_EPS_E);
   print = false;
   if(!coords_.empty())
     return;
@@ -444,12 +464,6 @@ void EGraphEuclideanHeuristic::runPrecomputations(){
       fw_matrix[j][i] = fw_matrix[i][j];
     }
   }
-
-  /*
-  for(unsigned int i=0; i<fw_matrix.size(); i++)
-    for(unsigned int j=0; j<fw_matrix.size(); j++)
-      assert(fw_matrix[i][j] >= 0);
-      */
 
   ROS_INFO("add egraph edges");
   //replace any original heuristic edges with e-graph edges that are cheaper
@@ -483,57 +497,9 @@ void EGraphEuclideanHeuristic::runPrecomputations(){
 
   ROS_INFO("build KD-tree");
   int leafSize = 10;
-  //index = new flann::Index<EG_DIST<float> >(dataMatrix, flann::KDTreeSingleIndexParams(leafSize));
-  index = new flann::Index<EG_DIST<float> >(dataMatrix, flann::LinearIndexParams());
+  index = new flann::Index<EG_DIST<float> >(dataMatrix, flann::KDTreeSingleIndexParams(leafSize));
+  //index = new flann::Index<EG_DIST<float> >(dataMatrix, flann::LinearIndexParams());
   index->buildIndex();
-
-  /*
-  {
-    flann::Index<EG_DIST<float> >* index2;
-    index2 = new flann::Index<EG_DIST<float> >(dataMatrix, flann::LinearIndexParams());
-    index2->buildIndex();
-
-    int c_size = 12;
-    flann::Matrix<int> indices(new int[NN], 1, NN);
-    flann::Matrix<float> dists(new float[NN], 1, NN);
-    flann::Matrix<float> query(new float[c_size], 1, c_size);
-    query[0][0] = 0.520000;
-    query[0][1] = -0.160000;
-    query[0][2] = -0.340000;
-    query[0][3] = 0.000000;
-    query[0][4] = 0.098175;
-    query[0][5] = 0.589049;
-    query[0][6] = 5.780490;
-    query[0][7] = 1.396356;
-    query[0][8] = 5.860000;
-    query[0][9] = 1.960000;
-    query[0][10] = 0.180000;
-    query[0][11] = 5.497787;
-    index->knnSearch(query, indices, dists, NN, flann::SearchParams(flann::FLANN_CHECKS_UNLIMITED, 0, true));
-
-    flann::Matrix<int> indices2(new int[NN], 1, NN);
-    flann::Matrix<float> dists2(new float[NN], 1, NN);
-    index2->knnSearch(query, indices2, dists2, NN, flann::SearchParams(flann::FLANN_CHECKS_UNLIMITED, 0, true));
-
-    printf("kd tree\n");
-    for(int i=0; i<NN; i++)
-      printf("idx=%d raw_dist=%f dist=%d\n", indices[0][i], dists[0][i], int(epsE_*sqrt(dists[0][i])));
-
-    printf("linear search\n");
-    for(int i=0; i<NN; i++)
-      printf("idx=%d raw_dist=%f dist=%d\n", indices2[0][i], dists2[0][i], int(epsE_*sqrt(dists2[0][i])));
-
-    assert(dists[0][0] == dists2[0][0]);
-
-    //confirm the nearest neighbor
-    for(unsigned int i=0; i<coords_.size()-1; i++){
-      float d = eg_dist(query[0], dataMatrix[i], c_size);
-      if(d < dists[0][0])
-        ROS_ERROR("found a better nearest neighbor! %d with raw_dist %f",i,d);
-      assert(dists[0][0] <= d);
-    }
-  }
-  */
 
 #if KD_DEBUG
   for(unsigned int i=0; i<coords_.size(); i++){
