@@ -1,5 +1,6 @@
 #include<egraphs/egraph_euclidean_heuristic.h>
 #include<limits>
+#include<angles/angles.h>
 
 using namespace std;
 
@@ -10,10 +11,24 @@ using namespace std;
 EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, double distance_inflation) : env_(env){
   dist_inflation = distance_inflation;
   inflation.clear();
+  continuous_joint.clear();
+}
+
+EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, 
+    double distance_inflation, const vector<bool>& cont) : env_(env){
+  inflation.resize(cont.size(), distance_inflation);
+  continuous_joint = cont;
 }
 
 EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, const vector<double>& element_diff_inflation) : env_(env){
   inflation = element_diff_inflation;
+  continuous_joint.clear();
+}
+
+EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, 
+    const vector<double>& element_diff_inflation, const vector<bool>& cont) : env_(env){
+  inflation = element_diff_inflation;
+  continuous_joint = cont;
 }
 
 void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
@@ -21,23 +36,18 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
 
   if(inflation.empty())
     inflation.resize(goal.size(), dist_inflation);
-
-  //ROS_INFO("goal is %f %f",goal[0],goal[1]);
-  //ROS_INFO("inflation is %f %f",inflation[0],inflation[1]);
+  if(continuous_joint.empty())
+    continuous_joint.resize(goal.size(), false);
 
   //compute shortcuts
   shortcut_cache_.resize(eg_->getNumComponents(),NULL);
-  vector<double> comp_dists(eg_->getNumComponents(),std::numeric_limits<double>::max());
+  vector<int> comp_dists(eg_->getNumComponents(),std::numeric_limits<int>::max());
   vector<double> c_coord;
   vector<double> h_coord;
   for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
     eg_->discToCont(eg_->id2vertex[i],c_coord);
     env_.projectToHeuristicSpace(c_coord,h_coord);
-    double dist = 0;
-    for(unsigned int j=0; j<h_coord.size(); j++){
-      double d = (h_coord[j] - goal_[j])*inflation[j];
-      dist += d*d;
-    }
+    int dist = euclideanDistance(h_coord,goal_);
     int c = eg_->id2vertex[i]->component;
     if(dist < comp_dists[c]){
       comp_dists[c] = dist;
@@ -109,38 +119,86 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
 }
 
 int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
-  /*
-  double dist = 0;
-  for(unsigned int i=0; i<coord.size(); i++){
-    double d = (coord[i] - goal_[i])*inflation[i];
-    dist += d*d;
-  }
-  dist = epsE_ * sqrt(dist);
-  return int(dist);
-  */
-
+  int best_idx = -1;
   int best_dist = INFINITECOST;
   for(unsigned int i=0; i<verts.size(); i++){
     int dist = euclideanDistance(coord,verts[i].coord) + verts[i].g;
-    if(dist < best_dist)
+    if(dist < best_dist){
       best_dist = dist;
+      best_idx = i;
+    }
   }
+  /*
+  printf("coord: ");
+  for(unsigned int i=0; i<coord.size(); i++)
+    printf("%f ",coord[i]);
+  printf("\n");
+  printf("goal:  ");
+  for(unsigned int i=0; i<verts[best_idx].coord.size(); i++)
+    printf("%f ",verts[best_idx].coord[i]);
+  printf("\n");
+  printf("dist = %d\n",best_dist);
+  */
+  //std::cin.get();
 
+  //ROS_INFO("best_idx = %d",best_idx);
+  //if(best_idx == verts.size()-1)
+    //ROS_WARN("being guided to goal...");
+  last_best_idx = best_idx;
   return best_dist;
 }
 
 inline int EGraphEuclideanHeuristic::euclideanDistance(const vector<double>& c1, const vector<double>& c2){
+  assert(c1.size()==12);
+  assert(c2.size()==12);
+
+  float accum = 0;
+  for(unsigned int i=0; i<c1.size(); i++)
+    accum += eg_dist.accum_dist(float(c1[i]), float(c2[i]), i);
+  return int(epsE_ * sqrt(accum));
+
+  /*
   double dist = 0;
+  //printf("delta: ");
   for(unsigned int i=0; i<c1.size(); i++){
-    double d = (c1[i] - c2[i])*inflation[i];
+    double d;
+    if(continuous_joint[i])
+      d = angles::shortest_angular_distance(c1[i],c2[i])*inflation[i];
+    else
+      d = (c1[i] - c2[i])*inflation[i];
+    //printf("%f ", d);
     dist += d*d;
   }
+  //printf("\n");
   dist = epsE_ * sqrt(dist);
   return int(dist);
+  */
 }
 
 void EGraphEuclideanHeuristic::getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices){
-  //there are no snaps for euclidean distance
+  if(dist_to_snap.empty())
+    return;
+  //there are no snaps for euclidean distance...not! AMP IT UP!
+  getHeuristic(coord);
+  if(last_best_idx >= int(eg_->id2vertex.size())){
+    //ROS_INFO("want to snap to goal?");
+    return;
+  }
+  assert(coord.size()==12);
+  vector<double> coord2 = verts[last_best_idx].coord;
+  for(unsigned int i=0; i<coord.size(); i++){
+    double d;
+    if(continuous_joint[i])
+      d = fabs(angles::shortest_angular_distance(coord[i],coord2[i]));
+    else
+      d = fabs(coord[i] - coord2[i]);
+    if(d > dist_to_snap[i]){
+      ROS_ERROR("not close enough to snap: dimension %d (%f - %f)",i,coord[i],coord2[i]);
+      return;
+    }
+  }
+
+  vertices.push_back(eg_->id2vertex[last_best_idx]);
 }
 
 void EGraphEuclideanHeuristic::runPrecomputations(){
