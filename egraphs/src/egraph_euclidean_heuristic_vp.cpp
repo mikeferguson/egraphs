@@ -2,18 +2,15 @@
 #include<limits>
 #include<angles/angles.h>
 
-#define NN 5
 #define C_SIZE 9
-
 #define KD_DEBUG false
+
+#define USE_VP false
 
 using namespace std;
 
 EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env) : env_(env){
   epsE_ = HARDCODED_EPS_E;
-  indices = flann::Matrix<int>(new int[NN], 1, NN);
-  dists = flann::Matrix<float>(new float[NN], 1, NN);
-  query = flann::Matrix<float>(new float[C_SIZE], 1, C_SIZE);
 }
 
 EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<double> >& env, double distance_inflation) : env_(env){
@@ -45,16 +42,10 @@ EGraphEuclideanHeuristic::EGraphEuclideanHeuristic(const EGraphable<vector<doubl
   continuous_joint = cont;
   epsE_ = HARDCODED_EPS_E;
 
-  indices = flann::Matrix<int>(new int[NN], 1, NN);
-  dists = flann::Matrix<float>(new float[NN], 1, NN);
-  query = flann::Matrix<float>(new float[cont.size()], 1, cont.size());
   exit(1);
 }
 
 EGraphEuclideanHeuristic::~EGraphEuclideanHeuristic(){
-  delete[] query.ptr();
-  delete[] indices.ptr();
-  delete[] dists.ptr();
 }
 
 void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
@@ -97,31 +88,40 @@ void EGraphEuclideanHeuristic::setGoal(const vector<double>& goal){
   }
 
   //ROS_INFO("compute best gval for each egraph node");
-  gval.clear();
-  gval.resize(fw_matrix.size(),make_pair(INFINITECOST,0));
-  for(unsigned int i=0; i<gval.size(); i++){
-    gval[i].second = i;
+  for(unsigned int i=0; i<fw_matrix.size(); i++){
+    database_[i][C_SIZE] = INFINITECOST;
     for(unsigned int j=0; j<fw_matrix.size(); j++){
       int d = goal_to_eg[j] + fw_matrix[i][j];
-      //if(d >= INFINITECOST)
-        //ROS_INFO("%d + %d",goal_to_eg[j],fw_matrix[i][j]);
-      //assert(d < INFINITECOST);
-      if(gval[i].first > d)
-        gval[i].first = d;
+      if(database_[i][C_SIZE] > d)
+        database_[i][C_SIZE] = d;
     }
-    //assert(gval[i].first < INFINITECOST);
   }
-  //ROS_INFO("sort gvals %lu",gval.size());
-  gval_sorted = gval;
-  sort(gval_sorted.begin(), gval_sorted.end()); //Note that this is expensive! 
+  
+  assert(goal.size()==C_SIZE);
+  for(unsigned int i=0; i<goal.size(); i++)
+    database_.back()[i] = goal[i];
+  database_.back()[C_SIZE] = 0;
+  database_.back()[C_SIZE+1] = float(database_.size()-1);
+
+  //vector<vector<float> > temp_database = database_;
+
+  int leafSize = 10;
+  if(USE_VP)
+    vptree.create(database_,leafSize);
+  else
+    ghtree.create(database_,leafSize);
 
 
 #if KD_DEBUG
+  for(unsigned int i=0; i<database_.size(); i++)
+    assert(database_[i][C_SIZE+1] == i);
+
+  
   initNaive();
 
-  for(unsigned int i=0; i<gval.size(); i++){
-    if(gval[i].first != verts[i].g){
-      ROS_ERROR("fw=%d and dij=%d differ at %d",gval[i].first,verts[i].g,i);
+  for(unsigned int i=0; i<database_.size(); i++){
+    if(int(database_[i][C_SIZE]) != verts[i].g){
+      ROS_ERROR("fw=%d and dij=%d differ at %d",int(database_[i][C_SIZE]),verts[i].g,i);
     }
   }
 #endif
@@ -211,152 +211,56 @@ int EGraphEuclideanHeuristic::getHeuristic(const vector<double>& coord){
 #if KD_DEBUG
   assert(coord.size()==C_SIZE);
 #endif
-  //ROS_INFO("get heuristic");
-  //double epsNN = 1.0;
-  bool sort = true;
+
+  double eps = 3.0;
+
+  vector<float> query(C_SIZE+2,0);
   for(unsigned int i=0; i<coord.size(); i++)
-    query[0][i] = coord[i];
-  //ROS_INFO("get NN from KD-tree");
-  index->knnSearch(query, indices, dists, NN, flann::SearchParams(flann::FLANN_CHECKS_UNLIMITED,/*epsNN-1*/ 0,sort));
+    query[i] = float(coord[i]);
+
+  std::vector<float> neighbor(C_SIZE+2,0);
+  int dist;
+  if(USE_VP)
+    vptree.search(query, neighbor, dist, eps);
+  else
+    ghtree.search(query, neighbor, dist, eps);
+  int best_h = int(round(dist));
+  int best_idx = int(round(neighbor[C_SIZE+1]));
+
+  /*
+  assert( neighbor[C_SIZE] == database_[best_idx][C_SIZE] );
+
+  int eh = FullEGDist(neighbor, query);
+  printf("vp=%d (%d, %d)        naive=%d  \n",eh, int(eh-neighbor[C_SIZE]), int(neighbor[C_SIZE]), euclideanDistance(coord,coords_[best_idx]));
+
+  assert(fabs(eh-neighbor[C_SIZE] - euclideanDistance(coord,coords_[best_idx])) <= 1);
+  assert(fabs(euclideanDistance(coord,coords_[best_idx]) + database_[best_idx][C_SIZE] - best_h) <= 1);
+  */
+
+
 
 #if KD_DEBUG
-  //BEGIN ANNOYING ERROR CHECKING TO CONFIRM THEY ARE ACTUALLY THE NEAREST NEIGHBORS
-  for(int i=0; i<NN; i++){
-    //printf("idx=%d raw_dist=%f dist=%d\n", indices[0][i], dists[0][i], int(epsE_*sqrt(dists[0][i])));
-    assert( int(epsE_*sqrt(dists[0][i])) == euclideanDistance(coord, coords_[indices[0][i]]));
-  }
-
-  //confirm the nearest neighbor
-  {
-    assert(eg_dist(query[0], dataMatrix[indices[0][0]], coord.size()) == dists[0][0]);
-    for(unsigned int i=0; i<coords_.size()-1; i++){
-      float d = eg_dist(query[0], dataMatrix[i], coord.size());
-      if(d < dists[0][0]){
-        ROS_ERROR("found a better nearest neighbor! %d with raw_dist %f",i,d);
-        ROS_ERROR("%f %f %f %f %f %f %f %f %f %f %f %f",
-            query[0][0],
-            query[0][1],
-            query[0][2],
-            query[0][3],
-            query[0][4],
-            query[0][5],
-            query[0][6],
-            query[0][7],
-            query[0][8],
-            query[0][9],
-            query[0][10],
-            query[0][11]);
-      }
-      assert(dists[0][0] <= d);
-    }
-  }
-
-  //confirm these are the top 5
-  {
-    int worst_kd_d = int(epsE_ * sqrt(dists[0][NN-1]));
-    //printf("worst_kd_dist=%d\n",worst_kd_d);
-    for(unsigned int i=0; i<coords_.size()-1; i++){
-      int d = euclideanDistance(coord, coords_[i]);
-      if(d < worst_kd_d){
-        bool already_chosen = false;
-        for(int j=0; j<NN; j++){
-          if(indices[0][j] == int(i)){
-            already_chosen = true;
-            //printf("already chosen idx=%d dist=%d\n",i,d);
-          }
-        }
-        if(!already_chosen)
-          ROS_ERROR("idx=%d is better, dist=%d",i,d);
-        assert(already_chosen);
-      }
-    }
-  }
-  //END ANNOYING ERROR CHECKING TO CONFIRM THEY ARE ACTUALLY THE NEAREST NEIGHBORS
-#endif
-  
-  //suboptimality bound on choosing best index
-  int eps = 3; //TODO: make parameter
-
-  //initialize best_h and best_idx to the goal
-  int g_low = 0.0; //lower bound on g comes from the goal
-  int best_h = euclideanDistance(coord,goal_);
-  int best_idx = eg_->id2vertex.size();
-
-  //e_low comes from the NN from the kd-tree
-  int e_low = 0.0;
-  //before pouring over all the egraph nodes, we will first look at the KD-tree NN
-  for(int i=0; i<NN; i++){
-    int temp_e = epsE_ * sqrt(dists[0][i]);
-    if(temp_e > e_low)
-      e_low = temp_e;
-    int temp_h = temp_e + gval[indices[0][i]].first;
-    if(temp_h < best_h){
-      best_h = temp_h;
-      best_idx = indices[0][i];
-    }
-  }
-  
-#if KD_DEBUG
-  int last_update = 0;
-#endif
-  int g_max = best_h - e_low;
-  //now iterate over all egraph nodes in increasing gval order
-  unsigned int i = 0;
-  for(; i<gval_sorted.size(); i++){
-    if(best_h < eps*(e_low + g_low))
-      break;
-    int temp_g = gval_sorted[i].first;
-    g_low = temp_g; //g is always increasing, bringing up the lower bound
-    if(temp_g >= g_max)
-      break;
-    int temp_e = euclideanDistance(coord, coords_[gval_sorted[i].second]);
-    int temp_h = temp_g + temp_e;
-    if(temp_h < best_h){
-      best_h = temp_h;
-      best_idx = gval_sorted[i].second;
-      g_max = best_h - e_low;
-#if KD_DEBUG
-      last_update = i;
-#endif
-    }
-  }
-
-#if KD_DEBUG
-  static int total_calls = 0;
-  static int total_checks = 0;
-  static int diff_between_best_and_break = 0;
-  total_calls++;
-  total_checks += i;
-  diff_between_best_and_break += i - last_update;
-  printf("break early %d/%lu had to be checked\n",i,gval_sorted.size());
-  printf("best idx was %d of %d checked\n",last_update,i);
-  printf("average difference between break and best %f\n",double(diff_between_best_and_break)/total_calls);
-  printf("average checks %f/%lu = %f\n",double(total_checks)/total_calls, gval_sorted.size(), 
-      double(total_checks)/total_calls/gval_sorted.size());
-
   //BEGIN COMPARE AGAINST NAIVE
   int naive_idx;
   int naive_dist = naiveGetHeuristic(coord, naive_idx);
-  //ROS_INFO("naive: idx=%d dist=%d",naive_idx,naive_dist);
-  //ROS_INFO("euclid_dist=%d gval=%d",euclideanDistance(coord,verts[naive_idx].coord), verts[naive_idx].g);
-  for(unsigned int i=0; i<gval_sorted.size(); i++){
-    if(gval_sorted[i].second == naive_idx){
-      //ROS_INFO("naive was at gval_sorted[%d]",i);
-      break;
-    }
-  }
-  //ROS_INFO("kd: idx=%d dist=%d",best_idx,best_h);
-  //ROS_INFO("euclid_dist=%d gval=%d",euclideanDistance(coord,coords_[best_idx]), gval[best_idx].first);
-  //if(naive_idx != best_idx)
-    //ROS_WARN("naive and kd chose different idx!");
+  ROS_INFO("naive: idx=%d dist=%d",naive_idx,naive_dist);
+  ROS_INFO("euclid_dist=%d gval=%d",euclideanDistance(coord,verts[naive_idx].coord), verts[naive_idx].g);
+  ROS_INFO("vp: idx=%d dist=%d",best_idx,best_h);
+  ROS_INFO("euclid_dist=%d gval=%d",euclideanDistance(coord,coords_[best_idx]), int(round(database_[best_idx][C_SIZE])));
+  if(best_h == naive_dist-1)
+    best_h = naive_dist;
+  if(naive_idx != best_idx)
+    ROS_WARN("naive and vp chose different idx!");
   assert(best_h <= eps*naive_dist);
   assert(best_h >= naive_dist);
+  static int total_calls = 0;
+  total_calls++;
   static int times_same = 0;
   static double avg_bound = 0;
   avg_bound += double(best_h)/naive_dist;
   if(best_h == naive_dist)
     times_same++;
-  printf("kd=naive %f percent\n", double(times_same)/total_calls);
+  printf("vp=naive %f percent\n", double(times_same)/total_calls);
   printf("average bound %f\n", avg_bound/total_calls);
   //END COMPARE AGAINST NAIVE
 #endif
@@ -375,33 +279,6 @@ inline int EGraphEuclideanHeuristic::euclideanDistance(const vector<double>& c1,
   for(unsigned int i=0; i<c1.size(); i++)
     accum += eg_dist.accum_dist(float(c1[i]), float(c2[i]), i);
   return int(epsE_ * sqrt(accum));
-
-  /*
-  float dist = 0;
-  //printf("delta: ");
-  if(print)
-    ROS_INFO("ed start");
-  for(unsigned int i=0; i<c1.size(); i++){
-    float d;
-    if(continuous_joint[i])
-      d = angles::shortest_angular_distance(float(c2[i]),float(c1[i]))*inflation[i];
-    else
-      d = (float(c1[i]) - float(c2[i]))*inflation[i];
-    if(print)
-      ROS_INFO("%f ",d);
-    //printf("%f ", d);
-    dist += d*d;
-    if(print)
-      ROS_INFO("accum %f",dist);
-  }
-  //printf("\n");
-  if(print)
-    ROS_INFO("raw %f",dist);
-  dist = epsE_ * sqrt(dist);
-  if(print)
-    ROS_INFO("all but cst %f",dist);
-  return int(dist);
-  */
 }
 
 void EGraphEuclideanHeuristic::getEGraphVerticesWithSameHeuristic(const vector<double>& coord, vector<EGraph::EGraphVertex*>& vertices){
@@ -443,10 +320,16 @@ void EGraphEuclideanHeuristic::runPrecomputations(){
   //compute the heuristic coordinate for each egraph vertex
   vector<double> c_coord;
   coords_.resize(eg_->id2vertex.size());
+  database_.resize(coords_.size()+1);
   for(unsigned int i=0; i<coords_.size(); i++){
     eg_->discToCont(eg_->id2vertex[i],c_coord);
     env_.projectToHeuristicSpace(c_coord,coords_[i]);
+    database_[i].resize(coords_[i].size()+2,0);
+    for(unsigned int j=0; j<coords_[i].size(); j++)
+      database_[i][j] = float(coords_[i][j]);
+    database_[i][C_SIZE+1] = float(i);
   }
+  database_.back().resize(C_SIZE+2,0);
   ROS_INFO("computed egraph heuristic coords (%lu)",coords_.size());
 
   //allocate memory for the matrix
@@ -487,45 +370,6 @@ void EGraphEuclideanHeuristic::runPrecomputations(){
         if(fw_matrix[i][j] > fw_matrix[i][k] + fw_matrix[k][j])
           fw_matrix[i][j] = fw_matrix[i][k] + fw_matrix[k][j];
 
-
-  dataMatrix = flann::Matrix<float>(new float[(coords_[0].size())*coords_.size()], coords_.size(), coords_[0].size());
-  for(unsigned int i=0; i<coords_.size(); i++)
-    for(unsigned int j=0; j<coords_[i].size(); j++)
-      dataMatrix[i][j] = coords_[i][j];
-  ROS_INFO("made FLANN matrix (%lu by %lu)",dataMatrix.rows,dataMatrix.cols);
-
-  ROS_INFO("build KD-tree");
-  int leafSize = 10;
-  index = new flann::Index<EG_DIST<float> >(dataMatrix, flann::KDTreeSingleIndexParams(leafSize));
-  //index = new flann::Index<EG_DIST<float> >(dataMatrix, flann::LinearIndexParams());
-  index->buildIndex();
-
-#if KD_DEBUG
-  for(unsigned int i=0; i<coords_.size(); i++){
-    for(unsigned int j=0; j<coords_.size(); j++){
-      int kd_dist = int(epsE_ * sqrt(eg_dist(dataMatrix[i], dataMatrix[j], coords_[0].size())));
-      float accum = 0;
-      for(unsigned int k=0; k<coords_[0].size(); k++)
-        accum += eg_dist.accum_dist(dataMatrix[i][k], dataMatrix[j][k], k);
-      int accum_dist = int(epsE_ * sqrt(accum));
-      assert(accum_dist == kd_dist);
-    }
-  }
-
-  //print = true;
-  for(unsigned int i=0; i<coords_.size(); i++){
-    for(unsigned int j=0; j<coords_.size(); j++){
-      int kd_dist = int(epsE_ * sqrt(eg_dist(dataMatrix[i], dataMatrix[j], coords_[0].size())));
-      int naive_dist = euclideanDistance(coords_[i],coords_[j]);
-      if(kd_dist != naive_dist)
-        ROS_ERROR("(%d %d) kd_dist=%d naive_dist=%d (kd raw %f) (sqrt(kd)=%f) kd_all_but_cast=%f",i,j,kd_dist,naive_dist, 
-            eg_dist(dataMatrix[i], dataMatrix[j], coords_[0].size()),
-            sqrt(eg_dist(dataMatrix[i], dataMatrix[j], coords_[0].size())),
-            epsE_ * sqrt(eg_dist(dataMatrix[i], dataMatrix[j], coords_[0].size())));
-      assert(fabs(kd_dist - naive_dist) <= 1);
-    }
-  }
-#endif
 }
 
 void EGraphEuclideanHeuristic::getDirectShortcut(int component, vector<EGraph::EGraphVertex*>& shortcuts){
