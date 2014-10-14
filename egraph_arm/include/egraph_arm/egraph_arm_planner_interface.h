@@ -57,7 +57,9 @@ class EGraphSBPLArmPlannerInterface : public SBPLArmPlannerInterface
     map<string,double> getEGraphStats(){return egraph_stat_map_;};
 
     void clearEGraph();
-    
+
+    void validateEGraph();
+
     bool addDemonstration(egraph_arm::AddPathsToEGraph::Request& req, egraph_arm::AddPathsToEGraph::Response& res);
 
     bool loadEGraphFromFile(std::string filename);

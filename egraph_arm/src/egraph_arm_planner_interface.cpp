@@ -151,6 +151,11 @@ void EGraphSBPLArmPlannerInterface::clearEGraph()
   egraph_->clearEGraph();
 }
 
+void EGraphSBPLArmPlannerInterface::validateEGraph()
+{
+  egraph_mgr_->validateEGraph(true);
+}
+
 bool EGraphSBPLArmPlannerInterface::loadEGraphFromFile(std::string filename)
 {
   return egraph_->load(filename);
