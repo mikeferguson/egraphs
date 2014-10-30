@@ -49,6 +49,8 @@ class EGraphSBPLArmPlannerInterface : public SBPLArmPlannerInterface
     ~EGraphSBPLArmPlannerInterface();
     
     bool solve(const arm_navigation_msgs::PlanningSceneConstPtr& planning_scene, EGraphReplanParams params, const arm_navigation_msgs::GetMotionPlan::Request &req, arm_navigation_msgs::GetMotionPlan::Response &res);
+    
+    bool solve(EGraphReplanParams params, const arm_navigation_msgs::GetMotionPlan::Request &req, arm_navigation_msgs::GetMotionPlan::Response &res);
 
     bool solve(const arm_navigation_msgs::GetMotionPlan::Request &req, arm_navigation_msgs::GetMotionPlan::Response &res);
     

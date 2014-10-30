@@ -110,6 +110,14 @@ bool EGraphSBPLArmPlannerInterface::solve(const arm_navigation_msgs::PlanningSce
   return SBPLArmPlannerInterface::solve(planning_scene, req, res);
 }
 
+bool EGraphSBPLArmPlannerInterface::solve(EGraphReplanParams params,
+                                    const arm_navigation_msgs::GetMotionPlan::Request &req,
+                                    arm_navigation_msgs::GetMotionPlan::Response &res) 
+{
+  replan_params_ = params;
+  return SBPLArmPlannerInterface::solve(req, res);
+}
+
 bool EGraphSBPLArmPlannerInterface::solve(const arm_navigation_msgs::GetMotionPlan::Request &req,
                                           arm_navigation_msgs::GetMotionPlan::Response &res) 
 {
