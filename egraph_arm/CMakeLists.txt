@@ -17,6 +17,11 @@ pkg_check_modules(SBPL REQUIRED sbpl)
 include_directories(${SBPL_INCLUDE_DIRS})
 link_directories(${SBPL_LIBRARY_DIRS})
 
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(sbpl_geometry_utils REQUIRED sbpl_geometry_utils)
+include_directories(${sbpl_geometry_utils_INCLUDE_DIRS})
+link_directories(${sbpl_geometry_utils_LIBRARY_DIRS})
+
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
@@ -35,9 +40,3 @@ target_link_libraries(${PROJECT_NAME} ${SBPL_LIBRARIES})
 #rosbuild_link_boost(${PROJECT_NAME} thread)
 #rosbuild_add_executable(example examples/example.cpp)
 #target_link_libraries(example ${PROJECT_NAME})
-
-#rosbuild_add_executable(planner_node src/egraph_arm.cpp src/egraph_arm_planner_interface.cpp src/planner_node.cpp)
-#target_link_libraries(planner_node sbpl_arm_planner sbpl_collision_checking moveit_distance_field ${SBPL_LIBRARIES})
-
-#rosbuild_add_executable(interactArmPlanner src/interactArmPlanner.cpp)
-#rosbuild_add_executable(runTests src/run_tests.cpp)
