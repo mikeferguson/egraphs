@@ -140,7 +140,9 @@ class LazyAEGPlanner : public SBPLPlanner{
         double heuristicSetGoalTime;
         clock_t succsClock;
         clock_t shortcutClock;
+        clock_t snapClock;
         clock_t heuristicClock;
+        double percentFromShortcuts;
 
         int evaluated_snaps;
 

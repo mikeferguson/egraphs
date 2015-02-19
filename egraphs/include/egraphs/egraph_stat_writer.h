@@ -10,7 +10,7 @@ class EGraphStatWriter{
       FILE* fout;
       if(start_new_file){
         fout = fopen(filename.c_str(),"w");
-        fprintf(fout, "# ");
+        fprintf(fout, "%% ");
         for(unsigned int i=0; i<names.size(); i++)
           fprintf(fout, "%s ", names[i].c_str());
         fprintf(fout, "\n");

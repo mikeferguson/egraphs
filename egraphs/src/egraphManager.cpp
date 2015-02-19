@@ -82,6 +82,7 @@ bool EGraphManager<HeuristicType>::setGoal(){
     stats_.heuristic_computation_time  = 0;
     stats_.combo_time  = 0;
     stats_.shortest_path_time  = 0;
+    stats_.get_direct_shortcut_time = 0;
     stats_.shortcut_time = 0;
     stats_.snap_time = 0;
     stats_.num_snaps = 0;
@@ -90,6 +91,7 @@ bool EGraphManager<HeuristicType>::setGoal(){
     //ROS_INFO("egraph heuristic setGoal time %f", double(clock()-time)/CLOCKS_PER_SEC);
     //snaps_.clear();
     //snap_combo_cache_.clear();
+    egraph_->clearShortestPathCache();
     return true;
 }
 
@@ -373,7 +375,10 @@ void EGraphManager<HeuristicType>::getDirectShortcutSuccessors(int source_state_
     // may not be a problem with retrieving the correct unique_goal_id for later
     // reconstruction
     vector<EGraph::EGraphVertex*> shortcuts;
+    double gds_t0 = ros::Time::now().toSec();
     egraph_heur_->getDirectShortcut(equiv_eg_vert->component,shortcuts);
+    double gds_t1 = ros::Time::now().toSec();
+    stats_.get_direct_shortcut_time += gds_t1-gds_t0;
     assert(shortcuts.size() <= 1);
     for(auto& shortcut_successor_egraph : shortcuts){
         ContState shortcut_successor_state;
@@ -391,8 +396,10 @@ void EGraphManager<HeuristicType>::getDirectShortcutSuccessors(int source_state_
 
         SuccIDV->push_back(successor_id);
         double t0 = ros::Time::now().toSec();
-        int shortcut_cost = egraph_->getShortestPath(equiv_eg_vert,
-                                                     shortcut_successor_egraph);
+        //int shortcut_cost = egraph_->getShortestPath(equiv_eg_vert,
+        //                                             shortcut_successor_egraph);
+        //for egraph getShortestPath caching reasons, we have to put the shortcut state first
+        int shortcut_cost = egraph_->getShortestPath(shortcut_successor_egraph, equiv_eg_vert);
         //ROS_INFO("direct shortcut %d->%d (%d)",source_state_id,successor_id,shortcut_cost);
         assert(shortcut_cost > 0);
         CostV->push_back(shortcut_cost);

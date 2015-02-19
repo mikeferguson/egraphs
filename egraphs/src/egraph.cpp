@@ -917,62 +917,81 @@ void EGraph::contToDisc(vector<double> c, vector<int>& d){
     //d.push_back(round((c[i]-min_[i])/(res_[i])));
 }
 
-
-int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVertex*>* path, vector<int>* costs){
+void EGraph::clearShortestPathCache(){
   search_iteration_++;
-  CHeap heap;
-  CKey key;
-  heap.makeemptyheap();
+  heaps_.clear();
+  heaps_.resize(num_components_);
+}
 
-  key.key[0] = 0;
-  v1->search_iteration = search_iteration_;
-  v1->search_cost = 0;
-  v1->heapindex = 0;
-  heap.insertheap(v1,key);
-
-  while(!heap.emptyheap()){
-    EGraphVertex* v = (EGraphVertex*)heap.deleteminheap();
-    if(v==v2)
-      break;
-
-    for(unsigned int i=0; i<v->neighbors.size(); i++){
-      if(!v->valid[i])
-        continue;
-      EGraphVertex* u = v->neighbors[i];
-      if(u->search_iteration < search_iteration_){
-        //this vertex has not been discovered before
-        //initialize it
-        u->search_iteration = search_iteration_;
-        u->search_cost = INFINITECOST;
-        u->heapindex = 0;
-      }
-      int newCost = v->search_cost + v->costs[i];
-      if (newCost <= 0){
+//searches from v1 to v2
+//uses the search_iteration counter to cache results between calls (and to allow on-the-fly initialization)
+//this is supposed to be used to help find direct shortcuts.
+//the caching assumes that v1 is the place you are shortcutting to (a search tree will be grown out of this root state)
+//v2 should be the place you are getting on the the egraph to start the shortcut
+//the planner should call clearShortestPathCache whenever the direct shortcut locations have changed (such as at the start of replan)
+int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVertex*>* path, vector<int>* costs){
+  //ROS_INFO("getShortestPath from %d to %d (components %d,%d)",v1->id,v2->id,v1->component,v2->component);
+  assert(v1->component == v2->component);
+  if(v1->search_iteration != search_iteration_){
+    assert(v1->component < int(heaps_.size()));
+    //ROS_INFO("init sc heap %d of %d with state %d as root",v1->component,heaps_.size(),v1->id);
+    CHeap* heap = &(heaps_[v1->component]);
+    heap->makeemptyheap();
+    CKey key;
+    key.key[0] = 0;
+    v1->search_iteration = search_iteration_;
+    v1->search_cost = 0;
+    v1->heapindex = 0;
+    heap->insertheap(v1,key);
+  }
+  if(v2->search_iteration != search_iteration_){
+    assert(v1->search_cost == 0);
+    CHeap* heap = &(heaps_[v1->component]);
+    CKey key;
+    CKey min_key = heap->getminkeyheap();
+    while(!heap->emptyheap() && 
+        (v2->search_iteration != search_iteration_ || v2->search_cost > min_key.key[0]) ){
+      EGraphVertex* v = (EGraphVertex*)heap->deleteminheap();
+      for(unsigned int i=0; i<v->neighbors.size(); i++){
+        if(!v->valid[i])
+          continue;
+        EGraphVertex* u = v->neighbors[i];
+        assert(u->component == v1->component);
+        if(u->search_iteration != search_iteration_){
+          //this vertex has not been discovered before
+          //initialize it
+          u->search_iteration = search_iteration_;
+          u->search_cost = INFINITECOST;
+          u->heapindex = 0;
+        }
+        int newCost = v->search_cost + v->costs[i];
+        if (newCost <= 0){
           ROS_INFO("%d %d %d", v->search_cost, v->costs[i], (v->valid[i]==true));
+        }
+        assert(newCost > 0);
+        if(u->search_cost > newCost){ //if we found a cheaper path to it
+          key.key[0] = newCost;
+          if(u->heapindex != 0)
+            heap->updateheap(u,key);
+          else
+            heap->insertheap(u,key);
+          u->search_cost = newCost;
+        }
       }
-      assert(newCost > 0);
-      if(u->search_cost > newCost){ //if we found a cheaper path to it
-        key.key[0] = newCost;
-        if(u->heapindex != 0)
-          heap.updateheap(u,key);
-        else
-          heap.insertheap(u,key);
-        u->search_cost = newCost;
-      }
+      min_key = heap->getminkeyheap();
+    }
+    if(v2->search_iteration != search_iteration_){
+      //v2 was not found...bad
+      ROS_ERROR("[EGraph] getShortestPath was called on two vertices that are not connected. There is probably a bug in the heuristic's getDirectShortcut function (or the connected components are incorrect).");
+      return INFINITECOST;
     }
   }
 
-  if(v2->search_iteration < search_iteration_){
-    //v2 was not found...bad
-    ROS_ERROR("[EGraph] getShortestPath was called on two vertices that are not connected. There is probably a bug in the heuristic's getDirectShortcut function (or the connected components are incorrect).");
-    return INFINITECOST;
-  }
 
   if(path && costs){
     //reconstruct the search path
     vector<EGraphVertex*> p;
     vector<int > c;
-
     EGraphVertex* v = v2;
     p.push_back(v);
     while(v!=v1){
@@ -981,8 +1000,8 @@ int EGraph::getShortestPath(EGraphVertex* v1, EGraphVertex* v2, vector<EGraphVer
       //ROS_INFO("descend from %d",v->id);
       for(unsigned int i=0; i<v->neighbors.size(); i++){
         if(v->neighbors[i]->search_iteration==search_iteration_ &&
-           v->valid[i] &&
-           v->neighbors[i]->search_cost + v->costs[i] < min_cost){
+            v->valid[i] &&
+            v->neighbors[i]->search_cost + v->costs[i] < min_cost){
           min_cost = v->neighbors[i]->search_cost + v->costs[i];
           min_idx = i;
         }

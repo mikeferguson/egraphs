@@ -29,6 +29,7 @@ struct EGraphStats {
     double feedback_time;
     double error_check_time;
     double shortest_path_time;
+    double get_direct_shortcut_time;
     double shortcut_time;
     double snap_time;
     double precomp_time;

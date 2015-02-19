@@ -194,11 +194,15 @@ void LazyAEGPlanner<HeuristicType>::EvaluateState(LazyAEGState* state){
     succsClock += getSucc_t1-getSucc_t0;
   }
   else if(edgeType == EdgeType::SNAP_DIRECT_SHORTCUT){
-    clock_t shortcut_t0 = clock();
+    clock_t snap_t0 = clock();
     assert(snap_midpoint >= 0);
     trueCost = egraph_mgr_->getSnapShortcutTrueCost(parent->id, snap_midpoint, state->id);
-    clock_t shortcut_t1 = clock();
-    shortcutClock += shortcut_t1 - shortcut_t0;
+    clock_t snap_t1 = clock();
+    snapClock += snap_t1 - snap_t0;
+    //this is technically a snap-shortcut, however, when expanding a state,
+    //the bulk of the work is finding the shortcut and the snap is evaluated lazily
+    //here, the shortcut was cached from before and the snap is fully evaluated so 
+    //this is dominated by the snap time (there are some nuances though)
   }
   else
     assert(false);
@@ -445,6 +449,7 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
     solcost = 0;
     int shortcut_count = 0;
 
+    int shortcut_edges = 0;
     while(state->id != final_state->id){
         if(state->expanded_best_parent == NULL){
             printf("a state along the path has no parent!\n");
@@ -470,13 +475,17 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
         }
         else if(state->expanded_best_edge_type == EdgeType::DIRECT_SHORTCUT){
           int sc_cost;
+          int before = wholePathIds.size();
           assert(egraph_mgr_->reconstructDirectShortcuts(state, next_state, &wholePathIds, &costs, shortcut_count, sc_cost));
+          shortcut_edges += wholePathIds.size() - before;
           if(print)
             ROS_INFO("shortcut edge %d %d %d", sc_cost, state->id, wholePathIds.back());
         }
         else if(state->expanded_best_edge_type == EdgeType::SNAP_DIRECT_SHORTCUT){
           int totalCost;
+          int before = wholePathIds.size();
           assert(egraph_mgr_->reconstructSnapShortcut(state, next_state, &wholePathIds, &costs, totalCost));
+          shortcut_edges += wholePathIds.size() - before;
           if(print)
             ROS_INFO("snap shortcut edge %d %d %d", totalCost, state->id, wholePathIds.back());
         }
@@ -486,6 +495,7 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
         assert(wholePathIds.back() == state->expanded_best_parent->id);
         state = next_state;
     }
+    percentFromShortcuts = double(shortcut_edges) / (wholePathIds.size()-1);
 
     //if we searched forward then the path reconstruction 
     //worked backward from the goal, so we have to reverse the path
@@ -549,6 +559,7 @@ void LazyAEGPlanner<HeuristicType>::initializeSearch(){
   totalExpands = 0;
   succsClock = 0;
   shortcutClock = 0;
+  snapClock = 0;
   heuristicClock = 0;
   reconstructTime = 0;
   feedbackPathTime = 0;
@@ -761,6 +772,7 @@ int LazyAEGPlanner<HeuristicType>::replan(vector<int>* solution_stateIDs_V, EGra
   printf("                heuristic           = %.2f\n", double(heuristicClock)/CLOCKS_PER_SEC);
   printf("                generate successors = %.2f\n", double(succsClock)/CLOCKS_PER_SEC);
   printf("                shortcuts           = %.2f\n", double(shortcutClock)/CLOCKS_PER_SEC);
+  printf("                snaps               = %.2f\n", double(snapClock)/CLOCKS_PER_SEC);
   printf("                path reconstruction = %.2f\n", reconstructTime);
   printf("                feedback path       = %.2f\n", feedbackPathTime);
   printf("---------------------------------------------------------------\n\n");
@@ -775,8 +787,12 @@ int LazyAEGPlanner<HeuristicType>::replan(vector<int>* solution_stateIDs_V, EGra
   stat_map_["heuristic_time"] = double(heuristicClock)/CLOCKS_PER_SEC;
   stat_map_["generate_successors_time"] = double(succsClock)/CLOCKS_PER_SEC;
   stat_map_["shortcuts_time"] = double(shortcutClock)/CLOCKS_PER_SEC;
+  stat_map_["snap_time"] = double(snapClock)/CLOCKS_PER_SEC;
   stat_map_["path_reconstruction_time"] = reconstructTime;
   stat_map_["feedback_path_time"] = feedbackPathTime;
+  stat_map_["percent_from_shortcuts"] = percentFromShortcuts;
+  //stat_map_["shortcut_bfs"] = egraph_mgr_->getStats().get_direct_shortcut_time;
+  //stat_map_["egraph_dijkstra"] = egraph_mgr_->getStats().shortest_path_time;
          
   return (int)solnFound;
 }

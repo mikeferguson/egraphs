@@ -105,6 +105,7 @@ class EGraph{
     void discToCont(EGraphVertex* v, std::vector<double>& c);
     void contToDisc(std::vector<double> c, std::vector<int>& d);
 
+    void clearShortestPathCache();
     int getShortestPath(EGraphVertex* v1, EGraphVertex* v2, std::vector<EGraphVertex*>* path=NULL, std::vector<int>* costs=NULL);
 
     //an id to coordinate mapping
@@ -128,6 +129,8 @@ class EGraph{
     int num_edges_;
     int num_components_;
     double cluster_radius_;
+
+    std::vector<CHeap> heaps_;
 
     EGraphDiscretize* eg_disc_;
 
