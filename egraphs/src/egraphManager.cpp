@@ -68,6 +68,7 @@ void EGraphManager<HeuristicType>::validateEGraph(bool update_egraph){
     }
     if (update_egraph){
         egraph_->computeComponents();
+        egraph_heur_->runPrecomputations();
     }
 
     ROS_INFO("num invalid edges from full egraph check: %d", num_invalid_edges);
