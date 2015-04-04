@@ -1,36 +1,51 @@
-cmake_minimum_required(VERSION 2.4.6)
-include($ENV{ROS_ROOT}/core/rosbuild/rosbuild.cmake)
+cmake_minimum_required(VERSION 2.8.3)
+project(egraphs)
 
-# Set the build type.  Options are:
-#  Coverage       : w/ debug symbols, w/o optimization, w/ code-coverage
-#  Debug          : w/ debug symbols, w/o optimization
-#  Release        : w/o debug symbols, w/ optimization
-#  RelWithDebInfo : w/ debug symbols, w/ optimization
-#  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-#set(ROS_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS "-std=c++0x")
 
-rosbuild_init()
-SET(CMAKE_CXX_FLAGS "-std=c++0x")
+find_package(catkin REQUIRED
+  COMPONENTS
+    roscpp
+)
 
-find_package(PkgConfig REQUIRED)
-pkg_check_modules(SBPL REQUIRED sbpl)
-include_directories(${SBPL_INCLUDE_DIRS})
-link_directories(${SBPL_LIBRARY_DIRS})
+find_package(PkgConfig)
+pkg_check_modules(PC_SBPL sbpl)
+include_directories(${PC_SBPL_INCLUDE_DIRS})
+link_directories(${PC_SBPL_LIBRARY_DIRS})
 
-#set the default path for built executables to the "bin" directory
-set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
-#set the default path for built libraries to the "lib" directory
-set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
+catkin_package(
+  INCLUDE_DIRS
+    include
+    src
+  LIBRARIES
+    egraphs
+  DEPENDS
+    sbpl
+)
 
-#uncomment if you have defined messages
-#rosbuild_genmsg()
-#uncomment if you have defined services
-#rosbuild_gensrv()
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+  ${Eigen_INCLUDE_DIRS}
+)
 
-#common commands for building c++ executables and libraries
-rosbuild_add_library(egraphs src/egraph.cpp src/egraph_2d_grid_heuristic.cpp src/egraph_3d_grid_heuristic.cpp src/egraph_euclidean_heuristic.cpp)# src/egraph_planner.cpp src/egraphManager.cpp)
-target_link_libraries(egraphs ${SBPL_LIBRARIES})
-#rosbuild_add_boost_directories()
-#rosbuild_link_boost(${PROJECT_NAME} thread)
-rosbuild_add_executable(test_egraphs src/test_egraphs.cpp)
-target_link_libraries(test_egraphs egraphs)
+add_library(egraphs
+  src/egraph.cpp
+  src/egraph_2d_grid_heuristic.cpp
+  src/egraph_3d_grid_heuristic.cpp
+  src/egraph_euclidean_heuristic.cpp
+)
+target_link_libraries(egraphs
+  ${catkin_LIBRARIES}
+  ${SBPL_LIBRARIES}
+)
+
+install(
+  TARGETS egraphs
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
+install(
+  DIRECTORY include/egraphs
+  DESTINATION include FILES_MATCHING PATTERN "*.h"
+)

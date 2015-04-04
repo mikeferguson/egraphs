@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package>
+  <name>egraph_vis</name>
+  <version>1.0.0</version>
+  <description>
+    E-Graphs visualizer
+  </description>
+  <author email="mlphilli@andrew.cmu.edu">Mike Phillips</author>
+  <maintainer email="mlphilli@andrew.cmu.edu">Mike Phillips</maintainer>
+  <url>http://ros.org/wiki/egraph_vis</url>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>egraphs</build_depend>
+  <build_depend>interactive_markers</build_depend>
+
+  <run_depend>egraphs</run_depend>
+  <run_depend>interactive_markers</run_depend>
+</package>

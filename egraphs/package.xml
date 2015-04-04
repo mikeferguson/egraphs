@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package>
+  <name>egraphs</name>
+  <version>1.0.0</version>
+  <description>
+	E-Graphs
+  </description>
+  <author email="mlphilli@andrew.cmu.edu">Mike Phillips</author>
+  <maintainer email="mlphilli@andrew.cmu.edu">Mike Phillips</maintainer>
+  <url>http://ros.org/wiki/egraphs</url>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>roscpp</build_depend>
+  <build_depend>sbpl</build_depend>
+
+  <run_depend>roscpp</run_depend>
+  <run_depend>sbpl</run_depend>
+</package>
