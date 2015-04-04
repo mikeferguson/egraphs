@@ -1,0 +1,24 @@
+<package>
+  <description brief="egraph_arm">
+
+     egraph_arm
+
+  </description>
+  <author>Mike Phillips</author>
+  <license>BSD</license>
+  <review status="unreviewed" notes=""/>
+  <url>http://ros.org/wiki/egraph_arm</url>
+
+  <depend package="sbpl_arm_planner"/>
+  <depend package="egraphs"/>
+  <depend package="egraph_vis"/>
+  <depend package="sbpl_collision_checking"/>
+  <depend package="arm_navigation_msgs" />
+
+  <export>
+    <cpp cflags="-I${prefix}/include  -O3 -g" lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -legraph_arm"/>
+  </export>
+
+</package>
+
+
