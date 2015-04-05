@@ -46,8 +46,6 @@ class EGraph3dGridHeuristic : public EGraphHeuristic<std::vector<int> >{
     int gridSize_;
     int cost_1_move_;
     int inflated_cost_1_move_;
-    CHeap heap;
-    CHeap sc_heap;
     std::vector<int> goal_dp_;
     
     std::vector<bool> empty_components_;
@@ -55,6 +53,10 @@ class EGraph3dGridHeuristic : public EGraphHeuristic<std::vector<int> >{
     std::vector<EGraph3dGridHeuristicCell> heur;
     std::vector<EGraph3dGridHeuristicCell> sc;
     const EGraphable<std::vector<int> >& env_;
+
+    // Heap destructor will reference huer/sc elements, must happen first.
+    CHeap heap;
+    CHeap sc_heap;
 };
 
 #endif
