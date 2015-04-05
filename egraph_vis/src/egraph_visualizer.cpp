@@ -1,8 +1,9 @@
-#include<egraph_vis/egraph_visualizer.h>
+#include <egraph_vis/egraph_visualizer.h>
 
 using namespace std;
 
-EGraphVisualizer::EGraphVisualizer(EGraph* eg, EGraphMarkerMaker* converter){
+EGraphVisualizer::EGraphVisualizer(EGraph* eg, EGraphMarkerMaker* converter)
+{
   eg_ = eg;
   converter_ = converter;
 
@@ -13,15 +14,18 @@ EGraphVisualizer::EGraphVisualizer(EGraph* eg, EGraphMarkerMaker* converter){
   menu_handler_.insert("Show/Hide Shortcuts", boost::bind(&EGraphVisualizer::processFeedback, this, _1));
 }
 
-EGraphVisualizer::~EGraphVisualizer(){
+EGraphVisualizer::~EGraphVisualizer()
+{
   server_.reset();
 }
 
-void EGraphVisualizer::visualize(){
+void EGraphVisualizer::visualize()
+{
   server_->clear();
   vis_table_.clear();
   vis_table_.resize(eg_->id2vertex.size());
-  for(unsigned int i=0; i<eg_->id2vertex.size(); i++){
+  for (unsigned int i = 0; i < eg_->id2vertex.size(); i++)
+  {
     EGraph::EGraphVertex* v = eg_->id2vertex[i];
 
     bool valid = false;
@@ -65,7 +69,8 @@ void EGraphVisualizer::visualize(){
   server_->applyChanges();
 }
 
-void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback){
+void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMarkerFeedbackConstPtr &feedback)
+{
   //parse the marker name
   char name[128];
   strncpy(name,feedback->marker_name.c_str(),sizeof(name));
@@ -141,7 +146,8 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
   server_->applyChanges();
 }
 
-void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
+void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed)
+{
   vector<double> coord;
   eg_->discToCont(v,coord);
   visualization_msgs::MarkerArray m;
@@ -149,6 +155,8 @@ void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
     m = converter_->stateToDetailedVisualizationMarker(coord);
   else
     m = converter_->stateToVisualizationMarker(coord);
+  if (m.markers.empty())
+    return;
   visualization_msgs::InteractiveMarker int_marker;
   int_marker.header.frame_id = m.markers.front().header.frame_id;
   int_marker.pose = m.markers.front().pose;
@@ -176,10 +184,13 @@ void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed){
   menu_handler_.apply(*server_, int_marker.name);
 }
 
-void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
+void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor)
+{
   vector<double> coord;
   eg_->discToCont(v,coord);
   visualization_msgs::MarkerArray m = converter_->stateToDetailedVisualizationMarker(coord);
+  if (m.markers.empty())
+    return;
   visualization_msgs::InteractiveMarker int_marker;
   int_marker.header.frame_id = m.markers.front().header.frame_id;
   int_marker.pose = m.markers.front().pose;
@@ -198,7 +209,8 @@ void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor){
   server_->insert(int_marker);
 }
 
-visualization_msgs::MarkerArray EGraphVisualizer::getVisualization(std::string type){
+visualization_msgs::MarkerArray EGraphVisualizer::getVisualization(std::string type)
+{
   visualization_msgs::MarkerArray ma;
   
   if(type.compare("egraph") == 0 || type.compare("detailed_egraph") == 0)
