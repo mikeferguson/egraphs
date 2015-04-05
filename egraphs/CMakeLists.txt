@@ -1,17 +1,17 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(egraphs)
 
-set(CMAKE_CXX_FLAGS "-std=c++0x")
-
-find_package(catkin REQUIRED
-  COMPONENTS
-    roscpp
-)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
 
 find_package(PkgConfig)
 pkg_check_modules(PC_SBPL sbpl)
 include_directories(${PC_SBPL_INCLUDE_DIRS})
 link_directories(${PC_SBPL_LIBRARY_DIRS})
+
+find_package(catkin REQUIRED
+  COMPONENTS
+    roscpp
+)
 
 catkin_package(
   INCLUDE_DIRS

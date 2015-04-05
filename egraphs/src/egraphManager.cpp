@@ -324,14 +324,16 @@ bool EGraphManager<HeuristicType>::reconstructSnapShortcut(LazyAEGState* state, 
   int dummy_shortcut_count=0;
   int totalShortcutCost;
   //uses state->id and state->expanded_best_parent->id
-  assert(reconstructDirectShortcuts(&state_reached_by_shortcut, next_state, 
+  bool ret = reconstructDirectShortcuts(&state_reached_by_shortcut, next_state,
                                     wholePathIds, costs, dummy_shortcut_count,
-                                    totalShortcutCost));
-  
+                                    totalShortcutCost);
+  assert(ret);
+
   //uses state->id and state->expanded_best_parent->id
   //state->expanded_best_parent is used to set next_state
-  assert(reconstructSnap(&fake_snap_state, next_state, 
-                         wholePathIds, costs));
+  ret = reconstructSnap(&fake_snap_state, next_state,
+                         wholePathIds, costs);
+  assert(ret);
 
   totalCost = totalShortcutCost + costs->back();
 

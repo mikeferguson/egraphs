@@ -463,7 +463,8 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
 
         LazyAEGState* next_state;
         if(state->expanded_best_edge_type == EdgeType::SNAP){
-          assert(egraph_mgr_->reconstructSnap(state, next_state, &wholePathIds, &costs));
+          bool ret = egraph_mgr_->reconstructSnap(state, next_state, &wholePathIds, &costs);
+          assert(ret);
           if(print)
             ROS_INFO("snap edge %d %d %d", costs.back(), state->id, wholePathIds.back());
         }
@@ -476,7 +477,8 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
         else if(state->expanded_best_edge_type == EdgeType::DIRECT_SHORTCUT){
           int sc_cost;
           int before = wholePathIds.size();
-          assert(egraph_mgr_->reconstructDirectShortcuts(state, next_state, &wholePathIds, &costs, shortcut_count, sc_cost));
+          bool ret = egraph_mgr_->reconstructDirectShortcuts(state, next_state, &wholePathIds, &costs, shortcut_count, sc_cost);
+          assert(ret);
           shortcut_edges += wholePathIds.size() - before;
           if(print)
             ROS_INFO("shortcut edge %d %d %d", sc_cost, state->id, wholePathIds.back());
@@ -484,7 +486,8 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
         else if(state->expanded_best_edge_type == EdgeType::SNAP_DIRECT_SHORTCUT){
           int totalCost;
           int before = wholePathIds.size();
-          assert(egraph_mgr_->reconstructSnapShortcut(state, next_state, &wholePathIds, &costs, totalCost));
+          bool ret = egraph_mgr_->reconstructSnapShortcut(state, next_state, &wholePathIds, &costs, totalCost);
+          assert(ret);
           shortcut_edges += wholePathIds.size() - before;
           if(print)
             ROS_INFO("snap shortcut edge %d %d %d", totalCost, state->id, wholePathIds.back());
