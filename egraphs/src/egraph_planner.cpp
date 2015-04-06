@@ -410,6 +410,8 @@ bool LazyAEGPlanner<HeuristicType>::reconstructSuccs(LazyAEGState* state,
         environment_->GetLazyPredsWithUniqueIds(state->expanded_best_parent->id, &SuccIDV, &CostV, &isTrueCost);
     int actioncost = INFINITECOST;
     //ROS_INFO("reconstruct with standard edge %d\n",state->expanded_best_parent->id);
+    if (SuccIDV.empty())
+      ROS_WARN("SuccIDV is empty");
     for(unsigned int i=0; i<SuccIDV.size(); i++){
         //printf("  succ %d\n",SuccIDV[i]);
         if(SuccIDV[i] == state->id && CostV[i]<actioncost)
@@ -463,22 +465,31 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
 
         LazyAEGState* next_state;
         if(state->expanded_best_edge_type == EdgeType::SNAP){
-          bool ret = egraph_mgr_->reconstructSnap(state, next_state, &wholePathIds, &costs);
-          assert(ret);
+          if (!egraph_mgr_->reconstructSnap(state, next_state, &wholePathIds, &costs))
+          {
+            ROS_ERROR("Unable to reconstruct snap");
+            throw "Unable to reconstruct snap";
+          }
           if(print)
             ROS_INFO("snap edge %d %d %d", costs.back(), state->id, wholePathIds.back());
         }
         else if(state->expanded_best_edge_type == EdgeType::NORMAL){
-          bool ret = reconstructSuccs(state, next_state, &wholePathIds, &costs);
-          assert(ret);
+          if (!reconstructSuccs(state, next_state, &wholePathIds, &costs))
+          {
+            ROS_ERROR("Unable to reconstruct successor");
+            throw "Unable to reconstruct successor";
+          }
           if(print)
             ROS_INFO("normal edge %d %d %d", costs.back(), state->id, wholePathIds.back());
         }
         else if(state->expanded_best_edge_type == EdgeType::DIRECT_SHORTCUT){
           int sc_cost;
           int before = wholePathIds.size();
-          bool ret = egraph_mgr_->reconstructDirectShortcuts(state, next_state, &wholePathIds, &costs, shortcut_count, sc_cost);
-          assert(ret);
+          if (!egraph_mgr_->reconstructDirectShortcuts(state, next_state, &wholePathIds, &costs, shortcut_count, sc_cost))
+          {
+            ROS_ERROR("Unable to reconstruct direct shortcut");
+            throw "Unable to reconstruct direct shortcut";
+          }
           shortcut_edges += wholePathIds.size() - before;
           if(print)
             ROS_INFO("shortcut edge %d %d %d", sc_cost, state->id, wholePathIds.back());
@@ -486,8 +497,11 @@ vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
         else if(state->expanded_best_edge_type == EdgeType::SNAP_DIRECT_SHORTCUT){
           int totalCost;
           int before = wholePathIds.size();
-          bool ret = egraph_mgr_->reconstructSnapShortcut(state, next_state, &wholePathIds, &costs, totalCost);
-          assert(ret);
+          if (!egraph_mgr_->reconstructSnapShortcut(state, next_state, &wholePathIds, &costs, totalCost))
+          {
+            ROS_ERROR("Unable to reconstruct snap shortcut");
+            throw "Unable to reconstruct snap shortcut";
+          }
           shortcut_edges += wholePathIds.size() - before;
           if(print)
             ROS_INFO("snap shortcut edge %d %d %d", totalCost, state->id, wholePathIds.back());
