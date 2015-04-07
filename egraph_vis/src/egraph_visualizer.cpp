@@ -8,7 +8,7 @@ EGraphVisualizer::EGraphVisualizer(EGraph* eg, EGraphMarkerMaker* converter)
   converter_ = converter;
 
   //set up interactive marker server
-  server_.reset(new interactive_markers::InteractiveMarkerServer("EGraph","",true));
+  server_.reset(new interactive_markers::InteractiveMarkerServer("egraph", "", true));
   ros::Duration(0.1).sleep();
   menu_handler_.insert("Show/Hide Neighborhood", boost::bind(&EGraphVisualizer::processFeedback, this, _1));
   menu_handler_.insert("Show/Hide Shortcuts", boost::bind(&EGraphVisualizer::processFeedback, this, _1));
@@ -127,6 +127,7 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
     if(isDetailed){
       //if this is a detailed vertex, delete it from the server
       server_->erase(feedback->marker_name);
+      vis_table_[v->id].detailed = false;
     }
     else{
       //we left clicked on a regular vertex
@@ -187,7 +188,7 @@ void EGraphVisualizer::addState(EGraph::EGraphVertex* v, bool detailed)
 void EGraphVisualizer::addNeighbor(EGraph::EGraphVertex* v, int neighbor)
 {
   vector<double> coord;
-  eg_->discToCont(v,coord);
+  eg_->discToCont(v->neighbors[neighbor],coord);
   visualization_msgs::MarkerArray m = converter_->stateToDetailedVisualizationMarker(coord);
   if (m.markers.empty())
     return;
