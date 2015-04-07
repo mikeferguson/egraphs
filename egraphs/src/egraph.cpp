@@ -532,7 +532,6 @@ bool EGraph::saveStats(string filename){
   FILE* fout = fopen(filename.c_str(),"w");
   if(!fout){
     ROS_ERROR("Could not open file \"%s\" to save E-Graph stats",filename.c_str());
-    fclose(fout);
     return false;
   }
 
@@ -553,7 +552,6 @@ bool EGraph::loadStats(string filename){
   FILE* fin = fopen(filename.c_str(),"r");
   if(!fin){
     ROS_ERROR("Could not open file \"%s\" to load E-Graph stats",filename.c_str());
-    fclose(fin);
     return false;
   }
 
@@ -603,7 +601,6 @@ bool EGraph::save(string filename){
   FILE* fout = fopen(filename.c_str(),"w");
   if(!fout){
     ROS_ERROR("Could not open file \"%s\" to save E-Graph",filename.c_str());
-    fclose(fout);
     return false;
   }
 
@@ -650,7 +647,6 @@ bool EGraph::load(string filename, bool clearCurrentEGraph){
   FILE* fin = fopen(filename.c_str(),"r");
   if(!fin){
     ROS_ERROR("Could not open file \"%s\" to load E-Graph",filename.c_str());
-    fclose(fin);
     return false;
   }
 
