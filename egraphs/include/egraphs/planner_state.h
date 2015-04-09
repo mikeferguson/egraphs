@@ -26,6 +26,12 @@ class LazyAEGState: public AbstractSearchState{
     bool isTrueCost;
 };
 
+inline std::ostream& operator<<(std::ostream& os, LazyAEGState const &s)
+{
+  os << s.id << ": (h:" << s.h << ", v:" << s.v << ", g:" << s.g << ")";
+  return os;
+}
+
 class LazyAEGListElement{
   public:
     LazyAEGListElement(LazyAEGState* p, int ec, bool itc, EdgeType et, int snap_mp){
