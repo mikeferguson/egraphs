@@ -49,9 +49,11 @@ LazyAEGPlanner<HeuristicType>::LazyAEGPlanner(DiscreteSpaceInformation* environm
 }
 
 template <typename HeuristicType>
-LazyAEGState* LazyAEGPlanner<HeuristicType>::GetState(int id){	
+LazyAEGState* LazyAEGPlanner<HeuristicType>::GetState(int id){
+  ROS_INFO_STREAM("GET STATE " << id);
   //if this stateID is out of bounds of our state vector then grow the list
   if(id >= int(states.size())){
+    ROS_WARN_STREAM("states currently size" << states.size());
     for(int i=states.size(); i<=id; i++)
       states.push_back(NULL);
   }
@@ -64,6 +66,7 @@ LazyAEGState* LazyAEGPlanner<HeuristicType>::GetState(int id){
   //initialize the state if it hasn't been for this call to replan
   LazyAEGState* s = states[id];
   if(s->replan_number != replan_number){
+    ROS_WARN_STREAM("Setting up " << id);
     s->g = INFINITECOST;
     s->v = INFINITECOST;
     s->iteration_closed = -1;
@@ -110,6 +113,10 @@ void LazyAEGPlanner<HeuristicType>::ExpandState(LazyAEGState* parent){
     environment_->GetLazySuccsWithUniqueIds(parent->id, &children, &costs, &isTrueCost);
   else
     environment_->GetLazyPredsWithUniqueIds(parent->id, &children, &costs, &isTrueCost);
+  int lazy_succ = children.size();
+  ROS_INFO_STREAM("  Got " << lazy_succ << " lazy successors");
+  //if (children.size() == 0)
+  //  return;
   clock_t getSucc_t1 = clock();
   succsClock += getSucc_t1-getSucc_t0;
 
@@ -123,12 +130,18 @@ void LazyAEGPlanner<HeuristicType>::ExpandState(LazyAEGState* parent){
     clock_t shortcut_t0 = clock();
     egraph_mgr_->getDirectShortcutSuccessors(parent->id, &children, &costs, &isTrueCost, &edgeTypes);
 
+    int direct_succ = children.size() - lazy_succ;
+    ROS_INFO_STREAM("  Got " << direct_succ << " direct successors");
+
     snap_midpoints.resize(children.size(),-1);
     egraph_mgr_->getSnapShortcuts(parent->id, &children, &costs, &isTrueCost, &edgeTypes, &snap_midpoints);
     if(edgeTypes.size()>0 && edgeTypes.back()==EdgeType::SNAP_DIRECT_SHORTCUT)
       assert(snap_midpoints.back()>=0);
     clock_t shortcut_t1 = clock();
     shortcutClock += shortcut_t1 - shortcut_t0;
+
+    int snap_succ = children.size() - lazy_succ - direct_succ;
+    ROS_INFO_STREAM("  Got " << snap_succ << " snap shortcut successors");
 
     //egraph_mgr_->getComboSnapShortcutSuccessors(parent->id, &children, &costs, &isTrueCost, &edgeTypes);
     // getComboSnapShortcutSuccessors needs the output of getSnapSuccessors, so
@@ -143,13 +156,21 @@ void LazyAEGPlanner<HeuristicType>::ExpandState(LazyAEGState* parent){
   }
   if (print){
       for (auto& id : children){
-          ROS_INFO("%d", id);
+          ROS_INFO("successor %d", id);
       }
   }
 
+  // WHAT?
   //iterate through children of the parent
   for(int i=0; i<(int)children.size(); i++){
-    //printf("  succ %d\n",children[i]);
+    if (edgeTypes[i] == EdgeType::NORMAL)
+      printf("  succ %d (normal)\n",children[i]);
+    else if (edgeTypes[i] == EdgeType::SNAP_DIRECT_SHORTCUT)
+      printf("  succ %d (snap)\n",children[i]);
+    else if (edgeTypes[i] == EdgeType::DIRECT_SHORTCUT)
+      printf("  succ %d (direct)\n", children[i]);
+    else
+      printf("  succ %d (???)\n",children[i]);
     LazyAEGState* child = GetState(children[i]);
     insertLazyList(child, parent, costs[i], isTrueCost[i], edgeTypes[i], snap_midpoints[i]);
   } 
@@ -161,7 +182,7 @@ void LazyAEGPlanner<HeuristicType>::ExpandState(LazyAEGState* parent){
 //it hasn't been expanded yet this iteration
 template <typename HeuristicType>
 void LazyAEGPlanner<HeuristicType>::EvaluateState(LazyAEGState* state){
-  bool print = false; //state->id == 285566;
+  bool print = true; //state->id == 285566;
   if(print)
     printf("evaluate %d (from %d)\n",state->id, state->best_parent->id);
   LazyAEGState* parent = state->best_parent;
@@ -184,14 +205,21 @@ void LazyAEGPlanner<HeuristicType>::EvaluateState(LazyAEGState* state){
   }
   */
 
-  int trueCost;
+  int trueCost = 0;
   if(edgeType == EdgeType::SNAP)
+  {
     trueCost = egraph_mgr_->getSnapTrueCost(parent->id, state->id);
-  else if(edgeType == EdgeType::NORMAL){
+    if (print)
+      printf("has a true snap cost of %d\n",trueCost);
+  }
+  else if(edgeType == EdgeType::NORMAL)
+  {
     clock_t getSucc_t0 = clock();
     trueCost = environment_->GetTrueCost(parent->id, state->id);
     clock_t getSucc_t1 = clock();
     succsClock += getSucc_t1-getSucc_t0;
+    if (print)
+      printf("has a true cost of %d\n",trueCost);
   }
   else if(edgeType == EdgeType::SNAP_DIRECT_SHORTCUT){
     clock_t snap_t0 = clock();
@@ -203,12 +231,21 @@ void LazyAEGPlanner<HeuristicType>::EvaluateState(LazyAEGState* state){
     //the bulk of the work is finding the shortcut and the snap is evaluated lazily
     //here, the shortcut was cached from before and the snap is fully evaluated so 
     //this is dominated by the snap time (there are some nuances though)
+    if (print)
+      printf("has a true shortcut cost of %d\n",trueCost);
+  }
+  else if (edgeType == EdgeType::DIRECT_SHORTCUT)
+  {
+    // This might be the magic fix?
+    trueCost = egraph_mgr_->getSnapTrueCost(parent->id, state->id);
+    if (print)
+      printf("has a true direct shortcut cost of %d\n", trueCost);
   }
   else
-    assert(false);
+  {
+    ROS_INFO("WTF!?");
+  }
 
-  if (print)
-      printf("has a true cost of %d\n",trueCost);
   if(trueCost > 0) //if the evaluated true cost is valid (positive), insert it into the lazy list
     insertLazyList(state,parent,trueCost,true,edgeType,snap_midpoint);
 }
@@ -348,7 +385,11 @@ int LazyAEGPlanner<HeuristicType>::ImprovePath(){
       std::cin.get();
     }
 
+    std::cout << std::endl;
+    environment_->PrintState(state->id, true, NULL);
+
     if(state->isTrueCost){
+      ROS_INFO_STREAM("ImprovePath: " << (*state) << " has true cost, expanding");
       if (state->best_parent){
           /* Mike replacing victor's code
           Edge edge(state->best_parent->id, state->id);
@@ -373,7 +414,10 @@ int LazyAEGPlanner<HeuristicType>::ImprovePath(){
         printf("expands so far=%u\n", expands);
     }
     else //otherwise the state needs to be evaluated for its true cost
+    { 
+      ROS_INFO_STREAM("ImprovePath: evaluating " << (*state));
       EvaluateState(state);
+    }
 
     //get the min key for the next iteration
     min_key = heap.getminkeyheap();
@@ -432,7 +476,7 @@ template <typename HeuristicType>
 vector<int> LazyAEGPlanner<HeuristicType>::GetSearchPath(int& solcost){
     clock_t reconstruct_t0 = clock();
 
-    bool print = false;
+    bool print = true;
     vector<int> wholePathIds;
     vector<int> costs;
     LazyAEGState* state;
@@ -642,6 +686,12 @@ bool LazyAEGPlanner<HeuristicType>::Search(vector<int>& pathIds, int& PathCost){
     //print the bound, expands, and time for that iteration
     printf("bound=%f expands=%d cost=%d time=%.2f\n", 
         eps_satisfied*params.epsE, delta_expands, goal_state.g, delta_time);
+
+/*    for (size_t i = 0; i < states.size(); ++i)
+    {
+      if (states[i])
+        ROS_INFO_STREAM("Planner state " << i << " is " << states[i]->id);
+    }*/
 
     //update stats
     totalExpands += delta_expands;

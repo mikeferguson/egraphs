@@ -138,6 +138,7 @@ void EGraphVisualizer::processFeedback(const visualization_msgs::InteractiveMark
         vis_table_[v->id].detailed = false;
       }
       else{
+        ROS_INFO_STREAM("Showing " << v->id);
         //we will draw the detailed version of the state
         addState(v,true);
         vis_table_[v->id].detailed = true;

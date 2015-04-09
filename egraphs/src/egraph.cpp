@@ -822,6 +822,12 @@ int EGraph::getHashBin(vector<int>& coord){
 }
 
 EGraph::EGraphVertex* EGraph::getVertex(vector<int>& coord){
+  std::cout << "getVertex (";
+  for (size_t i = 0; i < coord.size()-1; i++)
+  {
+    std::cout << coord[i] << ",";
+  }
+  std::cout << coord[coord.size()-1] <<")";
   int idx = getHashBin(coord);
   for(unsigned int i=0; i<hashtable[idx].size(); i++){
     bool isEqual = true;
@@ -832,8 +838,12 @@ EGraph::EGraphVertex* EGraph::getVertex(vector<int>& coord){
       }
     }
     if(isEqual)
+    {
+      std::cout << " FOUND (e" << hashtable[idx][i]->id << ")" << std::endl;
       return hashtable[idx][i];
+    }
   }
+  std::cout << std::endl;
   return NULL;
 }
 

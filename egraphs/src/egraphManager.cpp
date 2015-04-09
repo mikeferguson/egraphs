@@ -157,7 +157,11 @@ void EGraphManager<HeuristicType>::getSnapSuccessors(int stateID, vector<int>* S
         bool is_unique = find(SuccIDV->begin(), SuccIDV->end(), successor_id) == SuccIDV->end();
         if(is_snap_successful && is_unique){
             assert(cost_of_snap > 0);
-            //ROS_INFO("snap from %d to %d with cost %d\n",stateID,successor_id,cost_of_snap);
+            ROS_INFO("snap from %d to %d with cost %d\n",stateID,successor_id,cost_of_snap);
+            std::cout << "  ";
+            dynamic_cast<DiscreteSpaceInformation*>(egraph_env_)->PrintState(stateID, true, NULL);
+            std::cout << "  ";
+            dynamic_cast<DiscreteSpaceInformation*>(egraph_env_)->PrintState(successor_id, true, NULL);
             SuccIDV->push_back(successor_id);
             Edge edge(stateID, successor_id);
             //snaps_.insert({edge, successor_id});
@@ -407,7 +411,7 @@ void EGraphManager<HeuristicType>::getDirectShortcutSuccessors(int source_state_
         assert(shortcut_cost > 0);
         CostV->push_back(shortcut_cost);
         double t1 = ros::Time::now().toSec();
-        isTrueCost->push_back(true);
+        isTrueCost->push_back(false);
         edgeTypes->push_back(EdgeType::DIRECT_SHORTCUT);
         stats_.shortest_path_time += t1-t0;
     }
