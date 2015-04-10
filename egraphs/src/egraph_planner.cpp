@@ -835,6 +835,16 @@ int LazyAEGPlanner<HeuristicType>::set_start(int id){
 }
 
 template <typename HeuristicType>
+int LazyAEGPlanner<HeuristicType>::force_planning_from_scratch()
+{
+  if (egraph_mgr_)
+  {
+    egraph_mgr_->validateEGraph(true);
+  }
+  return 1;
+}
+
+template <typename HeuristicType>
 void LazyAEGPlanner<HeuristicType>::feedback_last_path(){
     egraph_mgr_->feedbackLastPath();
     printf("validitycheck time=%.3f feedbacktime %.3f errorcheck time=%.3f\n",

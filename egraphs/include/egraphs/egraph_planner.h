@@ -84,7 +84,7 @@ class LazyAEGPlanner : public SBPLPlanner{
         virtual void costs_changed(StateChangeQuery const & stateChange){return;};
         virtual void costs_changed(){return;};
 
-        virtual int force_planning_from_scratch(){return 1;};
+        virtual int force_planning_from_scratch();
         virtual int force_planning_from_scratch_and_free_memory(){return 1;};
 
         virtual int set_search_mode(bool bSearchUntilFirstSolution){
